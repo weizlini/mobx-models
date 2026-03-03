@@ -1,6 +1,7 @@
+import { toJS } from "mobx";
+
 import type BaseModel from "./BaseModel";
 import Field, { FieldOptions, FieldType } from "./Field";
-import { toJS } from "mobx";
 
 export interface ModelCollectionOptions<
   TItem extends BaseModel,

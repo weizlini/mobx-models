@@ -1,4 +1,5 @@
 import { runInAction, toJS, observable, action, computed, flow } from "mobx";
+
 import type BaseModel from "./BaseModel";
 
 export type SyncValidationResult = string | null | undefined;

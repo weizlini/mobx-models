@@ -1,5 +1,6 @@
 import { action, toJS, reaction, makeObservable, observable, runInAction } from "mobx";
 import localForage from "localforage";
+
 import type { RootStore } from "../index";
 
 type StoragePlatform = {
