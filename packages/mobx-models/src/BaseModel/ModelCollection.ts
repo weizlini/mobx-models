@@ -2,8 +2,10 @@ import type BaseModel from "./BaseModel";
 import Field, { FieldOptions, FieldType } from "./Field";
 import { toJS } from "mobx";
 
-export interface ModelCollectionOptions<TItem extends BaseModel, TParent extends BaseModel>
-    extends Omit<FieldOptions<TParent, TItem[]>, "type"> {
+export interface ModelCollectionOptions<
+  TItem extends BaseModel,
+  TParent extends BaseModel,
+> extends Omit<FieldOptions<TParent, TItem[]>, "type"> {
   modelClass: new (parent?: TParent | null) => TItem;
 }
 
@@ -12,8 +14,8 @@ export interface ModelCollectionOptions<TItem extends BaseModel, TParent extends
  * Each entry is a BaseModel instance (row-form).
  */
 export default class ModelCollection<
-    TItem extends BaseModel = BaseModel,
-    TParent extends BaseModel = BaseModel,
+  TItem extends BaseModel = BaseModel,
+  TParent extends BaseModel = BaseModel,
 > extends Field<TItem[], TParent> {
   public readonly isModelCollection: true = true;
 
@@ -68,9 +70,9 @@ export default class ModelCollection<
   public add(initValue: unknown = null): TItem {
     const model = new this.modelClass(this.model);
     model.init(
-        initValue !== null && typeof initValue === "object"
-            ? (initValue as Record<string, unknown>)
-            : null
+      initValue !== null && typeof initValue === "object"
+        ? (initValue as Record<string, unknown>)
+        : null
     );
     this.value.push(model);
     return model;

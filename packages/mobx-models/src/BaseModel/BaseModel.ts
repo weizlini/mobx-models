@@ -1,4 +1,4 @@
-import {observable, computed, action, toJS, flow} from "mobx";
+import { observable, computed, action, toJS, flow } from "mobx";
 import type Field from "./Field";
 
 export type JsonRecord = Record<string, unknown>;
@@ -75,8 +75,8 @@ export default class BaseModel {
   @computed
   public get isNew(): boolean {
     return (
-        this.initialData === null ||
-        (typeof this.initialData === "object" && Object.keys(this.initialData).length === 0)
+      this.initialData === null ||
+      (typeof this.initialData === "object" && Object.keys(this.initialData).length === 0)
     );
   }
 
@@ -120,8 +120,8 @@ export default class BaseModel {
 
   public toJS(excludePrimary: boolean = false, excludePseudo: boolean = true): JsonRecord {
     const js = this.__extractValuesFromFields(
-        excludePrimary,
-        excludePseudo ? this.__submittable : this.__fields
+      excludePrimary,
+      excludePseudo ? this.__submittable : this.__fields
     );
 
     for (const child of this.children) {
@@ -226,14 +226,12 @@ export default class BaseModel {
   }
 
   @flow
-  public *validate():unknown {
+  public *validate(): unknown {
     const fieldResults: Array<string | null> = yield Promise.all(
-        this.fields().map((k) => this.field(k).validate())
+      this.fields().map((k) => this.field(k).validate())
     );
 
-    const childResults: boolean[] = yield Promise.all(
-        this.children.map((m) => m.validate())
-    );
+    const childResults: boolean[] = yield Promise.all(this.children.map((m) => m.validate()));
 
     const all = [...fieldResults, ...childResults] as Array<unknown>;
     const failure = all.reduce<boolean>((prev, current) => prev || Boolean(current), false);

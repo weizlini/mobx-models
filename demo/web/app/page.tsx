@@ -1,4 +1,4 @@
-import { mobxModelsVersion } from 'mobx-models';
+import { mobxModelsVersion } from "mobx-models";
 
 export default function Page() {
   return (

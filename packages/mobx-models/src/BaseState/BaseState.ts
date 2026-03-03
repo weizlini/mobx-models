@@ -1,11 +1,4 @@
-import {
-  action,
-  toJS,
-  reaction,
-  makeObservable,
-  observable,
-  runInAction,
-} from "mobx";
+import { action, toJS, reaction, makeObservable, observable, runInAction } from "mobx";
 import localForage from "localforage";
 import type { RootStore } from "../index";
 
@@ -44,23 +37,23 @@ export default class BaseState {
   register(): void {
     Object.keys(this.save).forEach((key) => {
       this.reactionDisposers[key] = reaction(
-          () => this.__getKey(key),
-          async () => {
-            if (this.initialStateRestored) {
-              await this.saveToStorage(platformLocalStorage, key);
-            }
+        () => this.__getKey(key),
+        async () => {
+          if (this.initialStateRestored) {
+            await this.saveToStorage(platformLocalStorage, key);
           }
+        }
       );
     });
 
     Object.keys(this.session).forEach((key) => {
       this.reactionDisposers[key] = reaction(
-          () => this.__getKey(key),
-          async () => {
-            if (this.initialStateRestored) {
-              await this.saveToStorage(platformSessionStorage, key);
-            }
+        () => this.__getKey(key),
+        async () => {
+          if (this.initialStateRestored) {
+            await this.saveToStorage(platformSessionStorage, key);
           }
+        }
       );
     });
   }
@@ -71,9 +64,9 @@ export default class BaseState {
     });
 
     promises.push(
-        ...Object.keys(this.session).map((key) => {
-          return this.loadFromStorage(platformSessionStorage, key, this.session[key]);
-        })
+      ...Object.keys(this.session).map((key) => {
+        return this.loadFromStorage(platformSessionStorage, key, this.session[key]);
+      })
     );
 
     await Promise.all(promises);
@@ -84,9 +77,9 @@ export default class BaseState {
   }
 
   async loadFromStorage(
-      storagePlatform: StoragePlatform,
-      key: string,
-      initialValue: unknown
+    storagePlatform: StoragePlatform,
+    key: string,
+    initialValue: unknown
   ): Promise<void> {
     try {
       const value = await storagePlatform.getItem(this.constructor.name + "_" + key);
@@ -109,9 +102,9 @@ export default class BaseState {
   }
 
   async saveToStorage(
-      storagePlatform: StoragePlatform,
-      key: string,
-      overrideValue?: unknown
+    storagePlatform: StoragePlatform,
+    key: string,
+    overrideValue?: unknown
   ): Promise<void> {
     const value = overrideValue !== undefined ? overrideValue : this.__getKey(key);
     console.log(toJS(value));

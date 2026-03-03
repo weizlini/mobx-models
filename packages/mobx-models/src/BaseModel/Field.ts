@@ -1,23 +1,23 @@
-import {runInAction, toJS, observable, action, computed, flow} from "mobx";
+import { runInAction, toJS, observable, action, computed, flow } from "mobx";
 import type BaseModel from "./BaseModel";
 
 export type SyncValidationResult = string | null | undefined;
 
 export type SyncValidator<TValue, TModel extends BaseModel> = (
-    value: TValue,
-    model: TModel
+  value: TValue,
+  model: TModel
 ) => SyncValidationResult;
 
 export type AsyncValidator<TValue, TModel extends BaseModel> = (
-    value: TValue,
-    model: TModel
+  value: TValue,
+  model: TModel
 ) => Promise<string | null>;
 
 export type ValueProducer<TValue, TModel extends BaseModel> = TValue | ((model: TModel) => TValue);
 
 export type Transformer<TValue, TModel extends BaseModel> = (
-    value: TValue,
-    model: TModel
+  value: TValue,
+  model: TModel
 ) => unknown;
 
 export type Formatter<TValue, TModel extends BaseModel> = (value: TValue, model: TModel) => TValue;
@@ -217,7 +217,7 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
     if (options.value !== undefined) {
       if (!this.isReadonly) {
         throw new Error(
-            'Field option "value" is only for readonly fields. Use "format" for UI formatting or "transform" for submit formatting.'
+          'Field option "value" is only for readonly fields. Use "format" for UI formatting or "transform" for submit formatting.'
         );
       }
       if (options.default !== undefined) {
@@ -225,9 +225,9 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
       }
 
       const produced =
-          typeof options.value === "function"
-              ? (options.value as (m: TModel) => TValue)(this.model)
-              : (options.value as TValue);
+        typeof options.value === "function"
+          ? (options.value as (m: TModel) => TValue)(this.model)
+          : (options.value as TValue);
 
       this.initValue(produced);
     } else if (options.default !== undefined) {
@@ -247,7 +247,7 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
       case FieldType.collection:
         return (Array.isArray(v) ? v : []) as any;
       case FieldType.map:
-        return (typeof v === "object" && v !== null && !Array.isArray(v) ? v : {}) as any;
+        return (typeof v === "object" && !Array.isArray(v) ? v : {}) as any;
       case FieldType.set:
         return (v instanceof Set ? v : new Set(v as any)) as any;
       default:
@@ -417,7 +417,7 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
   }
 
   @flow
-  public *validate(): unknown{
+  public *validate(): unknown {
     this.validateSync();
 
     if (!this.hasAsyncValidator) return this.error;
@@ -432,10 +432,7 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
       return this.error;
     }
 
-    const error: string | null = yield this.asyncValidator(
-        this.value as any,
-        this.model
-    );
+    const error: string | null = yield this.asyncValidator(this.value as any, this.model);
 
     this.error = error;
     this.isAsyncValidating = false;

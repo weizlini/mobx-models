@@ -12,8 +12,8 @@ const LocalForageSessionStorageDriver = {
   },
 
   iterate: async function (
-      _iteratorCallback: (value: unknown, key: string, iterationNumber: number) => unknown,
-      _successCallback?: Callback<unknown>
+    _iteratorCallback: (value: unknown, key: string, iterationNumber: number) => unknown,
+    _successCallback?: Callback<unknown>
   ): Promise<unknown> {
     return null;
   },
@@ -33,9 +33,9 @@ const LocalForageSessionStorageDriver = {
   removeItem: async function (_key: string, _callback?: Callback<void>): Promise<void> {},
 
   setItem: async function (
-      _key: string,
-      value: unknown,
-      _callback?: Callback<unknown>
+    _key: string,
+    value: unknown,
+    _callback?: Callback<unknown>
   ): Promise<unknown> {
     return value;
   },
