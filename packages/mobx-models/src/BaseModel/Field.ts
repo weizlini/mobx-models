@@ -1,4 +1,4 @@
-import { runInAction, toJS, observable, action, computed } from "mobx";
+import {runInAction, toJS, observable, action, computed, flow} from "mobx";
 import type BaseModel from "./BaseModel";
 
 export type SyncValidationResult = string | null | undefined;
@@ -416,8 +416,8 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
     this.error = null;
   }
 
-  @action
-  public async validate(): Promise<string | null> {
+  @flow
+  public *validate(): unknown{
     this.validateSync();
 
     if (!this.hasAsyncValidator) return this.error;
@@ -432,12 +432,13 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
       return this.error;
     }
 
-    const error = await this.asyncValidator(this.value as any, this.model);
+    const error: string | null = yield this.asyncValidator(
+        this.value as any,
+        this.model
+    );
 
-    runInAction(() => {
-      this.error = error;
-      this.isAsyncValidating = false;
-    });
+    this.error = error;
+    this.isAsyncValidating = false;
 
     return error;
   }

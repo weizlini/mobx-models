@@ -1,4 +1,4 @@
-import { observable, computed, action, toJS } from "mobx";
+import {observable, computed, action, toJS, flow} from "mobx";
 import type Field from "./Field";
 
 export type JsonRecord = Record<string, unknown>;
@@ -225,11 +225,19 @@ export default class BaseModel {
     for (const m of this.children) m.validateSync();
   }
 
-  public async validate(): Promise<boolean> {
-    const fieldResults = await Promise.all(this.fields().map((k) => this.field(k).validate()));
-    const childResults = await Promise.all(this.children.map((m) => m.validate()));
+  @flow
+  public *validate():unknown {
+    const fieldResults: Array<string | null> = yield Promise.all(
+        this.fields().map((k) => this.field(k).validate())
+    );
+
+    const childResults: boolean[] = yield Promise.all(
+        this.children.map((m) => m.validate())
+    );
+
     const all = [...fieldResults, ...childResults] as Array<unknown>;
     const failure = all.reduce<boolean>((prev, current) => prev || Boolean(current), false);
+
     this.validated = true;
     return !failure;
   }
