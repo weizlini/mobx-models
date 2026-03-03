@@ -83,10 +83,33 @@ export const FieldType = {
   modelCollection: "ModelCollection",
   modelMap: "ModelMap",
   object: "object",
+
+  /**
+   * Database-stored binary for images (ArrayBuffer-ish).
+   * Intended value type: Uint8Array | null
+   */
+  image: "image",
 } as const;
 
 export type FieldTypeKey = keyof typeof FieldType;
 export type FieldTypeValue = (typeof FieldType)[FieldTypeKey];
+
+/**
+ * Minimal TC39 decorator context shape we rely on (TypeScript 5+).
+ *
+ * We avoid importing lib types directly so the package can compile against
+ * different TS lib configurations while remaining strictly typed.
+ */
+export interface FieldDecoratorContext<TThis, _TValue> {
+  readonly kind: "field" | "accessor";
+  readonly name: string | symbol;
+  addInitializer(initializer: (this: TThis) => void): void;
+}
+
+export type FieldPropertyDecorator<TThis extends BaseModel, TValue> = (
+  _value: undefined,
+  context: FieldDecoratorContext<TThis, TValue>
+) => void;
 
 function emptyForType(type: FieldTypeValue | FieldTypeKey | string): unknown {
   switch (type) {
@@ -96,9 +119,32 @@ function emptyForType(type: FieldTypeValue | FieldTypeKey | string): unknown {
       return {};
     case FieldType.set:
       return new Set();
+    case FieldType.image:
+      return null;
     default:
       return "";
   }
+}
+
+function coerceImageBytes(v: unknown): Uint8Array | null {
+  if (v === null || v === undefined) return null;
+
+  if (v instanceof Uint8Array) return v;
+
+  if (v instanceof ArrayBuffer) return new Uint8Array(v);
+
+  if (typeof DataView !== "undefined" && v instanceof DataView) {
+    return new Uint8Array(v.buffer, v.byteOffset, v.byteLength);
+  }
+
+  // Optional Node.js Buffer support without importing Node types.
+  const maybeBuffer = (globalThis as any)?.Buffer;
+  if (maybeBuffer && typeof maybeBuffer.isBuffer === "function" && maybeBuffer.isBuffer(v)) {
+    // Buffer is a Uint8Array subclass, but keep it normalized.
+    return new Uint8Array(v as Uint8Array);
+  }
+
+  return null;
 }
 
 export default class Field<TValue = unknown, TModel extends BaseModel = BaseModel> {
@@ -251,6 +297,8 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
         return (typeof v === "object" && !Array.isArray(v) ? v : {}) as any;
       case FieldType.set:
         return (v instanceof Set ? v : new Set(v as any)) as any;
+      case FieldType.image:
+        return coerceImageBytes(v) as any;
       default:
         return v as TValue;
     }
@@ -486,5 +534,118 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
     if (this.type === FieldType.set) return [...(this.value as any as Set<unknown>)];
     if (this.type === FieldType.collection) return [...(this.value as any as unknown[])];
     return [this.value];
+  }
+
+  /**
+   * Decorator factory (TC39 / TypeScript 5+).
+   *
+   * Usage:
+   *   class User extends BaseModel {
+   *     @Field.string({ required: true })
+   *     name!: string;
+   *   }
+   *
+   * This keeps Field as an instantiable class (Option A) while also enabling
+   * a property-decorator form (Option B). The decorator:
+   * - creates the Field instance during instance initialization
+   * - registers it via the existing BaseModel.__registerField path
+   * - defines a getter/setter on the property that proxies to Field.value
+   */
+  public static define<TValue, TThis extends BaseModel = BaseModel>(
+    options: FieldOptions<TThis, TValue> = {}
+  ): FieldPropertyDecorator<TThis, TValue> {
+    return (_unused: undefined, context: FieldDecoratorContext<TThis, TValue>) => {
+      if (context.kind !== "field" && context.kind !== "accessor") {
+        throw new Error(`@Field can only decorate a field/accessor (got: ${String(context.kind)})`);
+      }
+
+      const name = context.name;
+      if (typeof name !== "string") {
+        throw new Error("@Field does not support symbol property names.");
+      }
+
+      context.addInitializer(function (this: TThis) {
+        // Prevent accidental double-definition (e.g., mixing manual + decorator for same key).
+        if (this.__fields.includes(name)) {
+          throw new Error(
+            `Field decorator attempted to define "${name}", but that field is already registered.`
+          );
+        }
+
+        // Capture any pre-existing value that might have been assigned before our initializer runs.
+        // (e.g., constructor body sets this[name] before decorators initialize).
+        const preExisting = Object.prototype.hasOwnProperty.call(this, name)
+          ? (this as any)[name]
+          : undefined;
+
+        // Create and register the Field instance using existing logic.
+        const field = new Field<TValue, TThis>(this as any, name, options);
+
+        // Replace the data property with an accessor that proxies to the Field.
+        Object.defineProperty(this, name, {
+          configurable: true,
+          enumerable: true,
+          get(this: TThis) {
+            const f = this.field(name) as Field<TValue, TThis>;
+            return f.value as TValue;
+          },
+          set(this: TThis, v: TValue) {
+            const f = this.field(name) as Field<TValue, TThis>;
+            f.setValue(v as any);
+          },
+        });
+
+        // If something assigned a value before the accessor existed, respect it.
+        if (preExisting !== undefined) {
+          field.initValue(preExisting);
+        }
+      });
+    };
+  }
+
+  // Convenience typed factories.
+  public static string<TThis extends BaseModel = BaseModel>(
+    options: Omit<FieldOptions<TThis, string>, "type"> & { type?: never } = {}
+  ): FieldPropertyDecorator<TThis, string> {
+    return Field.define<string, TThis>({ ...(options as any), type: FieldType.string });
+  }
+
+  public static bool<TThis extends BaseModel = BaseModel>(
+    options: Omit<FieldOptions<TThis, boolean>, "type"> & { type?: never } = {}
+  ): FieldPropertyDecorator<TThis, boolean> {
+    return Field.define<boolean, TThis>({ ...(options as any), type: FieldType.bool });
+  }
+
+  public static int<TThis extends BaseModel = BaseModel>(
+    options: Omit<FieldOptions<TThis, number>, "type"> & { type?: never } = {}
+  ): FieldPropertyDecorator<TThis, number> {
+    return Field.define<number, TThis>({ ...(options as any), type: FieldType.int });
+  }
+
+  public static float<TThis extends BaseModel = BaseModel>(
+    options: Omit<FieldOptions<TThis, number>, "type"> & { type?: never } = {}
+  ): FieldPropertyDecorator<TThis, number> {
+    return Field.define<number, TThis>({ ...(options as any), type: FieldType.float });
+  }
+
+  public static date<TThis extends BaseModel = BaseModel>(
+    options: Omit<FieldOptions<TThis, Date | string>, "type"> & { type?: never } = {}
+  ): FieldPropertyDecorator<TThis, Date | string> {
+    return Field.define<Date | string, TThis>({ ...(options as any), type: FieldType.date });
+  }
+
+  public static json<TThis extends BaseModel = BaseModel, TValue = unknown>(
+    options: Omit<FieldOptions<TThis, TValue>, "type"> & { type?: never } = {}
+  ): FieldPropertyDecorator<TThis, TValue> {
+    return Field.define<TValue, TThis>({ ...(options as any), type: FieldType.json });
+  }
+
+  /**
+   * Image bytes stored in DB (Uint8Array | null).
+   */
+  public static image<TThis extends BaseModel = BaseModel>(
+    options: Omit<FieldOptions<TThis, Uint8Array | null>, "type"> & { type?: never } = {}
+  ): FieldPropertyDecorator<TThis, Uint8Array | null> {
+    return Field.define<Uint8Array | null, TThis>({ ...(options as any), type: FieldType.image });
   }
 }
