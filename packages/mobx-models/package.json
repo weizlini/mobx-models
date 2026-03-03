@@ -23,10 +23,13 @@
     "mobx": "^6.0.0"
   },
   "dependencies": {
+    "better-sqlite3": "^12.6.2",
     "localforage": "^1.10.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
     "vitest": "^4.0.18"
   }
 }
