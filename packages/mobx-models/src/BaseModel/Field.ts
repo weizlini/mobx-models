@@ -544,12 +544,6 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
    *     @Field.string({ required: true })
    *     name!: string;
    *   }
-   *
-   * This keeps Field as an instantiable class (Option A) while also enabling
-   * a property-decorator form (Option B). The decorator:
-   * - creates the Field instance during instance initialization
-   * - registers it via the existing BaseModel.__registerField path
-   * - defines a getter/setter on the property that proxies to Field.value
    */
   public static define<TValue, TThis extends BaseModel = BaseModel>(
     options: FieldOptions<TThis, TValue> = {}
@@ -565,23 +559,18 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
       }
 
       context.addInitializer(function (this: TThis) {
-        // Prevent accidental double-definition (e.g., mixing manual + decorator for same key).
         if (this.__fields.includes(name)) {
           throw new Error(
             `Field decorator attempted to define "${name}", but that field is already registered.`
           );
         }
 
-        // Capture any pre-existing value that might have been assigned before our initializer runs.
-        // (e.g., constructor body sets this[name] before decorators initialize).
         const preExisting = Object.prototype.hasOwnProperty.call(this, name)
           ? (this as any)[name]
           : undefined;
 
-        // Create and register the Field instance using existing logic.
         const field = new Field<TValue, TThis>(this as any, name, options);
 
-        // Replace the data property with an accessor that proxies to the Field.
         Object.defineProperty(this, name, {
           configurable: true,
           enumerable: true,
@@ -595,7 +584,6 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
           },
         });
 
-        // If something assigned a value before the accessor existed, respect it.
         if (preExisting !== undefined) {
           field.initValue(preExisting);
         }
@@ -648,4 +636,72 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
   ): FieldPropertyDecorator<TThis, Uint8Array | null> {
     return Field.define<Uint8Array | null, TThis>({ ...(options as any), type: FieldType.image });
   }
+
+  /**
+   * Array field (TItem[]).
+   */
+  public static collection<TThis extends BaseModel = BaseModel, TItem = unknown>(
+    options: Omit<FieldOptions<TThis, TItem[]>, "type"> & { type?: never } = {}
+  ): FieldPropertyDecorator<TThis, TItem[]> {
+    return Field.define<TItem[], TThis>({ ...(options as any), type: FieldType.collection });
+  }
+
+  /**
+   * Map field (Record<TKey, TValue>), stored as a plain object.
+   * Note: keys are always strings at runtime.
+   */
+  public static map<TThis extends BaseModel = BaseModel, TValue = unknown>(
+    options: Omit<FieldOptions<TThis, Record<string, TValue>>, "type"> & { type?: never } = {}
+  ): FieldPropertyDecorator<TThis, Record<string, TValue>> {
+    return Field.define<Record<string, TValue>, TThis>({
+      ...(options as any),
+      type: FieldType.map,
+    });
+  }
+
+  /**
+   * Set field (Set<TItem>).
+   */
+  public static set<TThis extends BaseModel = BaseModel, TItem = unknown>(
+    options: Omit<FieldOptions<TThis, Set<TItem>>, "type"> & { type?: never } = {}
+  ): FieldPropertyDecorator<TThis, Set<TItem>> {
+    return Field.define<Set<TItem>, TThis>({ ...(options as any), type: FieldType.set });
+  }
 }
+
+/**
+ * Lowercase decorator alias.
+ *
+ * Usage:
+ *   class User extends BaseModel {
+ *     @field.string({ required: true }) name!: string;
+ *     @field.collection<string>() tags!: string[];
+ *   }
+ *
+ * This is just Field.define, with the same typed convenience factories attached.
+ */
+export const field = Object.assign(Field.define, {
+  define: Field.define,
+  string: Field.string,
+  bool: Field.bool,
+  int: Field.int,
+  float: Field.float,
+  date: Field.date,
+  json: Field.json,
+  image: Field.image,
+  collection: Field.collection,
+  map: Field.map,
+  set: Field.set,
+}) as typeof Field.define & {
+  define: typeof Field.define;
+  string: typeof Field.string;
+  bool: typeof Field.bool;
+  int: typeof Field.int;
+  float: typeof Field.float;
+  date: typeof Field.date;
+  json: typeof Field.json;
+  image: typeof Field.image;
+  collection: typeof Field.collection;
+  map: typeof Field.map;
+  set: typeof Field.set;
+};
