@@ -1,9 +1,7 @@
-export type { StoreKey } from "./RootStore";
 export { RootStore } from "./RootStore";
+export type { StoreKey } from "./RootStore";
 
-export { default as BaseModel } from "./BaseModel/BaseModel";
-export { default as Field, FieldType } from "./BaseModel/Field";
-export { default as ModelCollection } from "./BaseModel/ModelCollection";
+export { BaseModel, Field, FieldType, field, ModelCollection } from "./BaseModel";
 
 export { default as BaseState } from "./BaseState/BaseState";
 export { default as LocalForageSessionStorageDriver } from "./BaseState/LocalForageSessionStorageDriver";
