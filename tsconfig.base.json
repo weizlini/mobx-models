@@ -10,6 +10,5 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "useDefineForClassFields": true,
-    "decorators": true
   }
 }

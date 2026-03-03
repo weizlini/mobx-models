@@ -1,4 +1,5 @@
-export type RootStore = any;
+export type { StoreKey } from "./RootStore";
+export { RootStore } from "./RootStore";
 
 export { default as BaseModel } from "./BaseModel/BaseModel";
 export { default as Field, FieldType } from "./BaseModel/Field";

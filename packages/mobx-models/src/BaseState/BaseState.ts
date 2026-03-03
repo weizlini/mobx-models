@@ -1,7 +1,7 @@
-import { action, toJS, reaction, makeObservable, observable, runInAction } from "mobx";
+import { observable, runInAction, toJS, reaction } from "mobx";
 import localForage from "localforage";
 
-import type { RootStore } from "../index";
+import type { RootStore } from "../RootStore";
 
 type StoragePlatform = {
   getItem(key: string): Promise<string | null | undefined>;
@@ -14,17 +14,12 @@ export default class BaseState {
   save: Record<string, unknown> = {};
   session: Record<string, unknown> = {};
 
-  initialStateRestored = false;
+  @observable accessor initialStateRestored = false;
 
   reactionDisposers: Record<string, () => void> = {};
 
   constructor(root: RootStore) {
     this.root = root;
-    makeObservable(this, {
-      loadFromStorage: action,
-      saveToStorage: action,
-      initialStateRestored: observable,
-    });
   }
 
   private __getKey(key: string): unknown {
