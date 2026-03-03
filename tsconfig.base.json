@@ -8,6 +8,8 @@
     "skipLibCheck": true,
     "noEmit": true,
     "resolveJsonModule": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "useDefineForClassFields": true,
+    "decorators": true
   }
 }

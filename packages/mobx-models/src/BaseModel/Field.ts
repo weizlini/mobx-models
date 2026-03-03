@@ -1,4 +1,4 @@
-import { runInAction, toJS, makeObservable, observable, action, computed } from "mobx";
+import { runInAction, toJS, observable, action, computed } from "mobx";
 import type BaseModel from "./BaseModel";
 
 export type SyncValidationResult = string | null | undefined;
@@ -15,7 +15,11 @@ export type AsyncValidator<TValue, TModel extends BaseModel> = (
 
 export type ValueProducer<TValue, TModel extends BaseModel> = TValue | ((model: TModel) => TValue);
 
-export type Transformer<TValue, TModel extends BaseModel> = (value: TValue, model: TModel) => unknown;
+export type Transformer<TValue, TModel extends BaseModel> = (
+    value: TValue,
+    model: TModel
+) => unknown;
+
 export type Formatter<TValue, TModel extends BaseModel> = (value: TValue, model: TModel) => TValue;
 
 export interface FieldOptions<TModel extends BaseModel = BaseModel, TValue = unknown> {
@@ -33,8 +37,17 @@ export interface FieldOptions<TModel extends BaseModel = BaseModel, TValue = unk
 
   validation?: SyncValidator<TValue, TModel>;
 
-  value?: ValueProducer<TValue, TModel>; // readonly only
+  /**
+   * Readonly-only producer.
+   * (If provided, `readonly` must be true.)
+   */
+  value?: ValueProducer<TValue, TModel>;
+
+  /**
+   * Default value for non-readonly fields.
+   */
   default?: TValue;
+
   readonly?: boolean;
 
   testId?: string;
@@ -74,6 +87,19 @@ export const FieldType = {
 export type FieldTypeKey = keyof typeof FieldType;
 export type FieldTypeValue = (typeof FieldType)[FieldTypeKey];
 
+function emptyForType(type: FieldTypeValue | FieldTypeKey | string): unknown {
+  switch (type) {
+    case FieldType.collection:
+      return [];
+    case FieldType.map:
+      return {};
+    case FieldType.set:
+      return new Set();
+    default:
+      return "";
+  }
+}
+
 export default class Field<TValue = unknown, TModel extends BaseModel = BaseModel> {
   public readonly isModel: false = false;
   public isModelCollection: boolean = false;
@@ -81,111 +107,64 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
   public model: TModel;
   public fieldName: string;
 
-  public isPrimary: boolean = false;
-  public isPseudo: boolean = false;
-  public isReadonly: boolean = false;
+  @observable public isPrimary: boolean = false;
+  @observable public isPseudo: boolean = false;
+  @observable public isReadonly: boolean = false;
 
-  public hasAsyncValidator: boolean = false;
-  public doAsyncValidationOnChange: boolean = false;
+  @observable public hasAsyncValidator: boolean = false;
+  @observable public doAsyncValidationOnChange: boolean = false;
 
-  public min: number | null = null;
-  public max: number | null = null;
+  @observable public min: number | null = null;
+  @observable public max: number | null = null;
 
-  public initialValue: TValue | "" = "" as any;
+  @observable public initialValue: TValue = undefined as any;
 
-  public requiredMessage: string = "errors:requiredField";
+  @observable public requiredMessage: string = "errors:requiredField";
 
-  public testId: string = "";
-  public help: string = "";
-  public ui: string = "";
-  public label: string = "";
+  @observable public testId: string = "";
+  @observable public help: string = "";
+  @observable public ui: string = "";
+  @observable public label: string = "";
 
-  public postAlias: string = "";
+  @observable public postAlias: string = "";
 
-  public type: FieldTypeValue | FieldTypeKey | string = FieldType.string;
+  @observable public type: FieldTypeValue | FieldTypeKey | string = FieldType.string;
 
-  public value: TValue | "" = "" as any;
+  @observable public value: TValue = undefined as any;
 
-  public error: string | null = null;
-  public isAsyncValidating: boolean = false;
+  @observable public error: string | null = null;
+  @observable public isAsyncValidating: boolean = false;
 
   public requiredFunction: (model: TModel) => boolean = () => false;
 
   public validator: SyncValidator<TValue, TModel> = () => null;
-
   public asyncValidator: AsyncValidator<TValue, TModel> = async () => null;
 
   public transform: Transformer<TValue, TModel> = (v) => v;
-
   public format: Formatter<TValue, TModel> = (v) => v;
 
   public onSet: (value: TValue, model: TModel) => void | Promise<void> = () => {};
   public onInit: (value: TValue, model: TModel) => void | Promise<void> = () => {};
 
+  @computed
   public get isRequired(): boolean {
     return this.requiredFunction(this.model);
   }
 
+  @computed
   public get isValid(): boolean {
     return !this.error;
   }
 
+  @computed
   public get isDirty(): boolean {
     return toJS(this.value as any) !== toJS(this.initialValue as any);
   }
 
   constructor(model: TModel, fieldName: string, options: FieldOptions<TModel, TValue> = {}) {
-    makeObservable(this, {
-      isPrimary: observable,
-      isPseudo: observable,
-      isReadonly: observable,
-
-      isAsyncValidating: observable,
-      hasAsyncValidator: observable,
-      doAsyncValidationOnChange: observable,
-
-      min: observable,
-      max: observable,
-
-      initialValue: observable,
-      requiredMessage: observable,
-
-      fieldName: observable,
-      testId: observable,
-      ui: observable,
-      help: observable,
-      label: observable,
-      postAlias: observable,
-
-      value: observable,
-      type: observable,
-
-      error: observable,
-
-      isDirty: computed,
-      isValid: computed,
-
-      initValue: action,
-      setValue: action,
-      asyncSetValue: action,
-      setError: action,
-
-      setItem: action,
-      clearItems: action,
-      push: action,
-      add: action,
-      remove: action,
-      removeItem: action,
-      reset: action,
-
-      validate: action,
-      validateSync: action,
-    });
-
     this.model = model;
     this.fieldName = fieldName;
 
-    // Apply options in a typed way
     if (options.primary === true) {
       this.isPrimary = true;
       this.model.primaryKey = fieldName;
@@ -233,22 +212,8 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
 
     if (options.type) {
       this.type = options.type;
-      switch (options.type) {
-        case FieldType.map:
-          this.initValue({} as any);
-          break;
-        case FieldType.collection:
-          this.initValue([] as any);
-          break;
-        case FieldType.set:
-          this.initValue(new Set() as any);
-          break;
-        default:
-          break;
-      }
     }
 
-    // readonly value support
     if (options.value !== undefined) {
       if (!this.isReadonly) {
         throw new Error(
@@ -265,58 +230,60 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
               : (options.value as TValue);
 
       this.initValue(produced);
-    }
-
-    if (options.default !== undefined) {
+    } else if (options.default !== undefined) {
       if (this.isReadonly) throw new Error("default cannot be used with readonly fields");
       this.initValue(options.default);
+    } else {
+      this.initValue(emptyForType(this.type) as any);
     }
 
-    // Register with model (single source of truth)
     this.model.__registerField(fieldName, this as any, !this.isPseudo);
   }
 
-  public initValue(v: unknown): void {
-    let value = (v ?? "") as any;
+  private __coerceValue(v: unknown): TValue {
+    if (v === null || v === undefined) return emptyForType(this.type) as TValue;
 
-    if (!value) {
-      switch (this.type) {
-        case FieldType.collection:
-          value = [];
-          break;
-        case FieldType.map:
-          value = {};
-          break;
-        case FieldType.set:
-          value = new Set();
-          break;
-        default:
-          break;
-      }
+    switch (this.type) {
+      case FieldType.collection:
+        return (Array.isArray(v) ? v : []) as any;
+      case FieldType.map:
+        return (typeof v === "object" && v !== null && !Array.isArray(v) ? v : {}) as any;
+      case FieldType.set:
+        return (v instanceof Set ? v : new Set(v as any)) as any;
+      default:
+        return v as TValue;
     }
+  }
+
+  @action
+  public initValue(v: unknown): void {
+    const value = this.__coerceValue(v);
 
     void this.onInit(value, this.model);
+
     this.setValue(value, true);
+
     this.initialValue = toJS(this.value as any) as any;
   }
 
+  @action
   public setValue(newValue: unknown, setReadOnlyField: boolean = false): void {
-    const v = (newValue ?? "") as any;
     if (this.isReadonly && !setReadOnlyField) return;
+
+    const coerced = this.__coerceValue(newValue);
 
     runInAction(() => {
       switch (this.type) {
         case FieldType.set:
-          this.value = new Set(v) as any;
+          this.value = (coerced instanceof Set ? coerced : (new Set(coerced as any) as any)) as any;
           break;
         default:
-          this.value = this.format(v, this.model) as any;
+          this.value = this.format(coerced as any, this.model) as any;
       }
     });
 
     void this.onSet(this.value as any, this.model);
 
-    // Validate from top-most model downward
     let modelToValidate: BaseModel = this.model;
     while (modelToValidate.parent) modelToValidate = modelToValidate.parent;
     modelToValidate.validateSync();
@@ -326,15 +293,17 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
     }
   }
 
+  @action
   public setError(error: string | null): void {
     this.error = error;
   }
 
+  @action
   public async asyncSetValue(newValue: unknown, setReadOnlyField: boolean = false): Promise<void> {
-    const v = (newValue ?? "") as any;
     if (this.isReadonly && !setReadOnlyField) return;
 
-    const formatted = await Promise.resolve(this.format(v, this.model) as any);
+    const coerced = this.__coerceValue(newValue);
+    const formatted = await Promise.resolve(this.format(coerced as any, this.model) as any);
 
     runInAction(() => {
       this.value = formatted;
@@ -351,6 +320,7 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
     }
   }
 
+  @action
   public setItem(key: string | number, value: unknown): void {
     if (this.type === FieldType.map) {
       this.setValue({ ...(this.value as any), [key]: value } as any);
@@ -367,6 +337,7 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
     throw new Error("Field.setItem can only be used by fields of type map or collection");
   }
 
+  @action
   public push(value: unknown): void {
     if (this.type !== FieldType.collection) {
       throw new Error("Field.push can only be used by fields of type collection");
@@ -375,6 +346,7 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
     this.validateSync();
   }
 
+  @action
   public clearItems(): void {
     switch (this.type) {
       case FieldType.map:
@@ -388,6 +360,7 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
     }
   }
 
+  @action
   public add(item: unknown): void {
     switch (this.type) {
       case FieldType.collection:
@@ -398,85 +371,80 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
         this.validateSync();
         break;
       default:
-        throw new Error("Field.add(item) can only be used with type collection or set");
+        throw new Error("Field.add can only be used by fields of type collection or set");
     }
   }
 
+  @action
   public remove(item: unknown): void {
     switch (this.type) {
-      case FieldType.collection: {
-        const arr = this.value as any[];
-        const index = arr.indexOf(item);
-        if (index === -1) return;
-        const next = toJS(arr) as any[];
-        next.splice(index, 1);
-        this.setValue(next as any);
+      case FieldType.collection:
+        this.value = (this.value as any[]).filter((v) => v !== item) as any;
+        this.validateSync();
         break;
-      }
       case FieldType.set:
         (this.value as Set<unknown>).delete(item);
         this.validateSync();
         break;
       default:
-        throw new Error("Field.remove(item) can only be used with type collection or set");
+        throw new Error("Field.remove can only be used by fields of type collection or set");
     }
   }
 
-  public removeItem(key: string): void {
-    if (this.type !== FieldType.map) {
-      throw new Error("Field.removeItem can only be used by fields of type map");
+  @action
+  public removeItem(key: string | number): void {
+    if (this.type === FieldType.map) {
+      const next = { ...(this.value as any) } as Record<string, unknown>;
+      delete next[String(key)];
+      this.setValue(next as any);
+      return;
     }
-    const next = toJS(this.value as any) as Record<string, unknown>;
-    delete next[key];
-    this.setValue(next as any);
+
+    if (this.type === FieldType.collection) {
+      const next = [...(this.value as any[])];
+      next.splice(key as number, 1);
+      this.setValue(next as any);
+      return;
+    }
+
+    throw new Error("Field.removeItem can only be used by fields of type map or collection");
   }
 
+  @action
   public reset(): void {
-    this.value = this.initialValue as any;
+    this.setValue(this.initialValue as any, true);
     this.error = null;
   }
 
-  public async validate(): Promise<null | string> {
-    const localError = this.validateSync();
-    if (localError) return localError;
+  @action
+  public async validate(): Promise<string | null> {
+    this.validateSync();
 
-    if (!this.error && this.hasAsyncValidator) {
-      runInAction(() => {
-        this.isAsyncValidating = true;
-      });
+    if (!this.hasAsyncValidator) return this.error;
 
-      const error = await this.asyncValidator(this.value as any, this.model);
-
-      runInAction(() => {
-        this.isAsyncValidating = false;
-        this.error = error;
-      });
-
-      return error;
-    }
-
-    return null;
-  }
-
-  public validateSync(): null | string {
-    this.error = null;
+    this.isAsyncValidating = true;
 
     const v = this.value as any;
 
-    if (!this.isRequired && !v) return null;
-
-    const isCollectionLike =
-        this.type === FieldType.collection ||
-        this.type === FieldType.modelCollection ||
-        this.type === FieldType.set ||
-        this.type === FieldType.map ||
-        this.type === FieldType.modelMap;
-
-    if (this.isRequired && isCollectionLike) {
-      const arr = this.array;
-      if (!arr.length) this.error = this.requiredMessage;
+    if (this.isRequired && (v === null || v === "" || v === undefined)) {
+      this.error = this.requiredMessage;
+      this.isAsyncValidating = false;
       return this.error;
     }
+
+    const error = await this.asyncValidator(this.value as any, this.model);
+
+    runInAction(() => {
+      this.error = error;
+      this.isAsyncValidating = false;
+    });
+
+    return error;
+  }
+
+  @action
+  public validateSync(): string | null {
+    const v = this.value as any;
 
     if (this.isRequired && (v === null || v === "" || v === undefined)) {
       this.error = this.requiredMessage;

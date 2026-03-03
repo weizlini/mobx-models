@@ -1,9 +1,9 @@
 import type BaseModel from "./BaseModel";
-import Field, { FieldType } from "./Field";
+import Field, { FieldOptions, FieldType } from "./Field";
 import { toJS } from "mobx";
 
 export interface ModelCollectionOptions<TItem extends BaseModel, TParent extends BaseModel>
-    extends Omit<Parameters<typeof Field<TItem[], TParent>>[2], "type"> {
+    extends Omit<FieldOptions<TParent, TItem[]>, "type"> {
   modelClass: new (parent?: TParent | null) => TItem;
 }
 
@@ -18,19 +18,22 @@ export default class ModelCollection<
   public readonly isModelCollection: true = true;
 
   public modelClass: new (parent?: TParent | null) => TItem;
-  public initialValue: unknown[] = [];
+
+  /**
+   * We keep the raw init payload separately so `isDirty` can compare stable shapes.
+   */
+  private __initialSerialized: unknown[] = [];
 
   constructor(model: TParent, fieldName: string, options: ModelCollectionOptions<TItem, TParent>) {
     super(model, fieldName, { ...options, type: FieldType.modelCollection });
     this.modelClass = options.modelClass;
 
-    // Ensure value starts as a real array of models
-    this.value = [];
+    this.value = [] as any;
+    this.initialValue = [] as any;
   }
 
   public override get isDirty(): boolean {
-    // Compare serialized shapes (reference compare is useless here)
-    return JSON.stringify(this.toJS()) !== JSON.stringify(this.initialValue ?? []);
+    return JSON.stringify(this.toJS()) !== JSON.stringify(this.__initialSerialized);
   }
 
   public override get array(): TItem[] {
@@ -42,17 +45,21 @@ export default class ModelCollection<
   }
 
   public override initValue(collectionValues: unknown[] | null): void {
-    this.initialValue = collectionValues ?? [];
-    this.value = [];
+    this.__initialSerialized = collectionValues ?? [];
 
-    for (const v of this.initialValue) {
+    this.value = [] as any;
+    this.initialValue = [] as any;
+
+    for (const v of this.__initialSerialized) {
       this.add(v);
     }
+
+    this.initialValue = toJS(this.value) as any;
   }
 
   public override reset(): void {
-    this.value = [];
-    for (const v of this.initialValue) {
+    this.value = [] as any;
+    for (const v of this.__initialSerialized) {
       this.add(v);
     }
     this.error = null;
@@ -70,7 +77,7 @@ export default class ModelCollection<
   }
 
   public remove(model: TItem): void {
-    this.value = this.value.filter((m) => m !== model);
+    this.value = this.value.filter((m) => m !== model) as any;
     this.validateSync();
   }
 

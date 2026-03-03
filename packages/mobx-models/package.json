@@ -15,9 +15,13 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts",
-    "test": "vitest"
+    "test": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "peerDependencies": {
     "mobx": "^6.0.0"
+  },
+  "dependencies": {
+    "localforage": "^1.10.0"
   }
 }

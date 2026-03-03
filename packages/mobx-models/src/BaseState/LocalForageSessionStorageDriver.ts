@@ -1,31 +1,44 @@
-const LocalForageSessionStorageDriver: any = {
+type Callback<T = unknown> = (err: unknown, value?: T) => void;
+
+const LocalForageSessionStorageDriver = {
   _driver: "SessionStorage",
-  _initStorage: function (options) {
-    // Custom implementation here...
+
+  _initStorage: function (_options: unknown): void {},
+
+  clear: async function (_callback?: Callback<void>): Promise<void> {},
+
+  getItem: async function (_key: string, _callback?: Callback<unknown>): Promise<unknown> {
+    return null;
   },
-  clear: async function (callback) {
-    // Custom implementation here...
+
+  iterate: async function (
+      _iteratorCallback: (value: unknown, key: string, iterationNumber: number) => unknown,
+      _successCallback?: Callback<unknown>
+  ): Promise<unknown> {
+    return null;
   },
-  getItem: async function (key, callback) {
-    // Custom implementation here...
+
+  key: async function (_n: number, _callback?: Callback<string | null>): Promise<string | null> {
+    return null;
   },
-  iterate: async function (iteratorCallback, successCallback) {
-    // Custom implementation here...
+
+  keys: async function (_callback?: Callback<string[]>): Promise<string[]> {
+    return [];
   },
-  key: async function (n, callback) {
-    // Custom implementation here...
+
+  length: async function (_callback?: Callback<number>): Promise<number> {
+    return 0;
   },
-  keys: async function (callback) {
-    // Custom implementation here...
+
+  removeItem: async function (_key: string, _callback?: Callback<void>): Promise<void> {},
+
+  setItem: async function (
+      _key: string,
+      value: unknown,
+      _callback?: Callback<unknown>
+  ): Promise<unknown> {
+    return value;
   },
-  length: async function (callback) {
-    // Custom implementation here...
-  },
-  removeItem: async function (key, callback) {
-    // Custom implementation here...
-  },
-  setItem: async function (key, value, callback) {
-    // Custom implementation here...
-  },
-};
+} as const;
+
 export default LocalForageSessionStorageDriver;
