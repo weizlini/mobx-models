@@ -8,6 +8,7 @@
     "demo/*"
   ],
   "devDependencies": {
+    "prettier": "^3.8.1",
     "typescript": "^5.0.0"
   }
 }
