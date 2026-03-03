@@ -16,12 +16,17 @@
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts",
     "test": "vitest",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --ext .ts"
   },
   "peerDependencies": {
     "mobx": "^6.0.0"
   },
   "dependencies": {
     "localforage": "^1.10.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "vitest": "^4.0.18"
   }
 }
