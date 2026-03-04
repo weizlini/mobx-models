@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-
+import UserModel from "../../state/models/UserModel";
 import UsersTableSection from "./UsersTableSection";
 
 export default function UsersPage() {
