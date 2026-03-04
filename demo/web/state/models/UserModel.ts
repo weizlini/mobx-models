@@ -40,7 +40,7 @@ export default class UserModel extends BaseModel {
 
     @field.string({
         required: true,
-        validation: validators.email(),
+        validation: validators.email,
         asyncValidation: asyncValidators.unique<string, UserModel>({
             fieldName: "email",
             normalize: (v) => String(v ?? "").trim().toLowerCase(),
@@ -66,26 +66,23 @@ export default class UserModel extends BaseModel {
     @field.string({ required: true })
     public lastName!: string;
 
-    @field.int({
-        required: true,
-        default: 0,
-        validation: validators.all(
-            validators.integer<UserModel>(),
-            validators.min<UserModel>(0),
-            validators.max<UserModel>(150)
-        ),
-    })
-    public age!: number;
-
     @field.string({
         required: true,
-        validation: validators.pattern(/^(\d{4})-(\d{2})-(\d{2})$/, "errors:date"),
+        validation: validators.pattern(/^\d{4}-\d{2}-\d{2}$/, "errors:date"),
     })
     public birthday!: string;
 
-    public setAgeFromBirthday(today: Date = new Date()): void {
-        const next = calculateAgeFromBirthdayIso(String(this.birthday ?? ""), today);
-        if (!Number.isFinite(next)) return;
-        this.field<number>("age").setValue(next);
-    }
+    @field.int({
+        readonly: true,
+        value: (m) => {
+            const next = calculateAgeFromBirthdayIso(String(m.birthday ?? ""));
+            return Number.isFinite(next) ? next : 0;
+        },
+        validation: validators.all(
+            validators.integer,
+            validators.min(0),
+            validators.max(150)
+        ),
+    })
+    public age!: number;
 }

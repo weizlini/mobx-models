@@ -7,7 +7,7 @@ export type ErrorCode = string;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const validators = {
-  // composition (factories)
+  // composition
   all<TValue, TModel extends BaseModel>(
       ...validators: Array<SyncValidator<TValue, TModel>>
   ): SyncValidator<TValue, TModel> {
@@ -41,16 +41,14 @@ export const validators = {
     return (value, model) => (predicate(model) ? validator(value, model) : null);
   },
 
-  // generic
+  // generic (plain)
+  notNull: ((value: unknown) => (value === null ? "errors:notNull" : null)) as SyncValidator<
+      unknown,
+      any
+  >,
 
-  /**
-   * Plain validator (no config): value must not be null.
-   * Note: this does not treat "" or undefined as null; use `required` for that.
-   */
-  notNull: ((value: unknown) => (value === null ? "errors:notNull" : null)) as SyncValidator<unknown, any>,
-
-  /** Factory for custom error codes. */
-  notNullCode<TModel extends BaseModel>(code: ErrorCode): SyncValidator<unknown, TModel> {
+  // generic (factory for custom code)
+  notNullCode<TModel extends BaseModel>(code: ErrorCode = "errors:notNull"): SyncValidator<unknown, TModel> {
     return (value) => (value === null ? code : null);
   },
 
@@ -81,8 +79,7 @@ export const validators = {
     };
   },
 
-  // string
-
+  // string (factories)
   minLen<TModel extends BaseModel>(
       min: number,
       code: ErrorCode = "errors:minLen"
@@ -104,19 +101,15 @@ export const validators = {
     return (value) => (re.test(value) ? null : code);
   },
 
-  /** Plain validator (no config). */
-  email: ((value: string) => (EMAIL_RE.test(value) ? null : "errors:email")) as SyncValidator<
-      string,
-      any
-  >,
+  // string (plain)
+  email: ((value: string) => (EMAIL_RE.test(value) ? null : "errors:email")) as SyncValidator<string, any>,
 
-  /** Factory for custom error codes. */
-  emailCode<TModel extends BaseModel>(code: ErrorCode): SyncValidator<string, TModel> {
+  // string (factory for custom code)
+  emailCode<TModel extends BaseModel>(code: ErrorCode = "errors:email"): SyncValidator<string, TModel> {
     return (value) => (EMAIL_RE.test(value) ? null : code);
   },
 
-  // number
-
+  // number (factories)
   min<TModel extends BaseModel>(
       min: number,
       code: ErrorCode = "errors:min"
@@ -131,19 +124,15 @@ export const validators = {
     return (value) => (value <= max ? null : code);
   },
 
-  /** Plain validator (no config). */
-  integer: ((value: number) => (Number.isInteger(value) ? null : "errors:integer")) as SyncValidator<
-      number,
-      any
-  >,
+  // number (plain)
+  integer: ((value: number) => (Number.isInteger(value) ? null : "errors:integer")) as SyncValidator<number, any>,
 
-  /** Factory for custom error codes. */
-  integerCode<TModel extends BaseModel>(code: ErrorCode): SyncValidator<number, TModel> {
+  // number (factory for custom code)
+  integerCode<TModel extends BaseModel>(code: ErrorCode = "errors:integer"): SyncValidator<number, TModel> {
     return (value) => (Number.isInteger(value) ? null : code);
   },
 
   // array
-
   minItems<TModel extends BaseModel>(
       min: number,
       code: ErrorCode = "errors:minItems"
@@ -159,7 +148,6 @@ export const validators = {
   },
 
   // set
-
   setMin<TModel extends BaseModel>(
       min: number,
       code: ErrorCode = "errors:minItems"
