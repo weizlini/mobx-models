@@ -10,27 +10,27 @@ export default class BaseModel {
   public parent: BaseModel | null | undefined;
   public children: BaseModel[] = [];
 
-  @observable public primaryKey: string = "";
-  @observable public busy: boolean = false;
-  @observable public validated: boolean = false;
-  @observable public initialized: boolean = false;
-  @observable public initialData: Record<string, unknown> | null = null;
-  @observable public saveError: unknown = null;
+  @observable accessor primaryKey: string = "";
+  @observable accessor busy: boolean = false;
+  @observable accessor validated: boolean = false;
+  @observable accessor initialized: boolean = false;
+  @observable accessor initialData: Record<string, unknown> | null = null;
+  @observable accessor saveError: unknown = null;
 
   /**
    * Used when a child model's submit property is different than GET property.
    */
-  @observable public postAlias: string | null = null;
+  @observable accessor postAlias: string | null = null;
 
   /**
    * Registered field names (order matters for UI iteration).
    */
-  @observable public __fields: string[] = [];
+  @observable accessor __fields: string[] = [];
 
   /**
    * Submittable field names (excludes pseudos).
    */
-  @observable public __submittable: string[] = [];
+  @observable accessor __submittable: string[] = [];
 
   /**
    * Internal registry to avoid indexing into `this[k]`.
@@ -38,7 +38,7 @@ export default class BaseModel {
    * We keep this observable (shallow) so UI that iterates can react to field creation.
    */
   @observable.shallow
-  private readonly __fieldByName: Map<string, Field<any, any>> = new Map();
+  private accessor __fieldByName: Map<string, Field<any, any>> = new Map();
 
   constructor(parent?: BaseModel | null) {
     this.parent = parent;
@@ -76,8 +76,8 @@ export default class BaseModel {
   @computed
   public get isNew(): boolean {
     return (
-      this.initialData === null ||
-      (typeof this.initialData === "object" && Object.keys(this.initialData).length === 0)
+        this.initialData === null ||
+        (typeof this.initialData === "object" && Object.keys(this.initialData).length === 0)
     );
   }
 
@@ -121,8 +121,8 @@ export default class BaseModel {
 
   public toJS(excludePrimary: boolean = false, excludePseudo: boolean = true): JsonRecord {
     const js = this.__extractValuesFromFields(
-      excludePrimary,
-      excludePseudo ? this.__submittable : this.__fields
+        excludePrimary,
+        excludePseudo ? this.__submittable : this.__fields
     );
 
     for (const child of this.children) {
@@ -229,7 +229,7 @@ export default class BaseModel {
   @flow
   public *validate(): unknown {
     const fieldResults: Array<string | null> = yield Promise.all(
-      this.fields().map((k) => this.field(k).validate())
+        this.fields().map((k) => this.field(k).validate())
     );
 
     const childResults: boolean[] = yield Promise.all(this.children.map((m) => m.validate()));
