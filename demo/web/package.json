@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "db:init": "tsx scripts/init-db.ts",
     "dev": "next dev",
     "build": "next build",
     "start": "next start"
