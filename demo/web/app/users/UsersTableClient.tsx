@@ -24,16 +24,32 @@ export default function UsersTableClient({ initialRows }: { initialRows: UserRow
     const [sortKey, setSortKey] = React.useState<SortKey>("id");
     const [sortDir, setSortDir] = React.useState<SortDir>("asc");
 
+    const scrollRef = React.useRef<HTMLDivElement | null>(null);
+    const pendingScrollTopRef = React.useRef<number | null>(null);
+
     const rows = React.useMemo(
         () => sortRows(initialRows, sortKey, sortDir),
         [initialRows, sortKey, sortDir]
     );
 
+    React.useLayoutEffect(() => {
+        if (pendingScrollTopRef.current === null) return;
+        if (!scrollRef.current) return;
+
+        scrollRef.current.scrollTop = pendingScrollTopRef.current;
+        pendingScrollTopRef.current = null;
+    }, [sortKey, sortDir]);
+
     const onHeaderClick = (key: SortKey) => {
+        if (scrollRef.current) {
+            pendingScrollTopRef.current = scrollRef.current.scrollTop;
+        }
+
         if (key === sortKey) {
             setSortDir((d) => (d === "asc" ? "desc" : "asc"));
             return;
         }
+
         setSortKey(key);
         setSortDir("asc");
     };
@@ -43,11 +59,7 @@ export default function UsersTableClient({ initialRows }: { initialRows: UserRow
         const arrow = isActive ? (sortDir === "asc" ? " ▲" : " ▼") : " ↕";
 
         return (
-            <th
-                key={String(key)}
-                onClick={() => onHeaderClick(key)}
-                style={thStyle}
-            >
+            <th key={String(key)} onClick={() => onHeaderClick(key)} style={thStyle}>
         <span style={{ fontWeight: 600 }}>
           {label}
             {arrow}
@@ -57,7 +69,10 @@ export default function UsersTableClient({ initialRows }: { initialRows: UserRow
     }
 
     return (
-        <div style={{ overflowX: "auto", maxHeight: 520, overflowY: "auto" }}>
+        <div
+            ref={scrollRef}
+            style={{ overflowX: "auto", maxHeight: 520, overflowY: "auto" }}
+        >
             <table
                 style={{
                     borderCollapse: "collapse",
@@ -90,7 +105,8 @@ export default function UsersTableClient({ initialRows }: { initialRows: UserRow
             </table>
 
             <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
-                Click any column header to sort. ↕ indicates sortable. Header is sticky while scrolling.
+                Click any column header to sort. ↕ indicates sortable. Header is sticky while
+                scrolling.
             </div>
         </div>
     );
