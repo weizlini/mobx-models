@@ -5,20 +5,20 @@ import type BaseModel from "./BaseModel";
 export type SyncValidationResult = string | null | undefined;
 
 export type SyncValidator<TValue, TModel extends BaseModel> = (
-  value: TValue,
-  model: TModel
+    value: TValue,
+    model: TModel
 ) => SyncValidationResult;
 
 export type AsyncValidator<TValue, TModel extends BaseModel> = (
-  value: TValue,
-  model: TModel
+    value: TValue,
+    model: TModel
 ) => Promise<string | null>;
 
 export type ValueProducer<TValue, TModel extends BaseModel> = TValue | ((model: TModel) => TValue);
 
 export type Transformer<TValue, TModel extends BaseModel> = (
-  value: TValue,
-  model: TModel
+    value: TValue,
+    model: TModel
 ) => unknown;
 
 export type Formatter<TValue, TModel extends BaseModel> = (value: TValue, model: TModel) => TValue;
@@ -41,6 +41,11 @@ export interface FieldOptions<TModel extends BaseModel = BaseModel, TValue = unk
   /**
    * Readonly-only producer.
    * (If provided, `readonly` must be true.)
+   *
+   * IMPORTANT:
+   * - If this is a function, we store it internally (not in `value`).
+   * - Its produced value is re-applied during BaseModel.validateSync() passes so
+   *   derived/readonly fields stay consistent even though the UI never sets them.
    */
   value?: ValueProducer<TValue, TModel>;
 
@@ -107,8 +112,8 @@ export interface FieldDecoratorContext<TThis, _TValue> {
 }
 
 export type FieldPropertyDecorator<TThis extends BaseModel, TValue> = (
-  _value: undefined,
-  context: FieldDecoratorContext<TThis, TValue>
+    _value: undefined,
+    context: FieldDecoratorContext<TThis, TValue>
 ) => void;
 
 function emptyForType(type: FieldTypeValue | FieldTypeKey | string): unknown {
@@ -193,6 +198,14 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
   public onSet: (value: TValue, model: TModel) => void | Promise<void> = () => {};
   public onInit: (value: TValue, model: TModel) => void | Promise<void> = () => {};
 
+  /**
+   * Stored readonly value producer (if configured).
+   *
+   * This is used for derived/readonly fields whose value should be refreshed
+   * during validation passes.
+   */
+  private readonlyValueProducer: ((model: TModel) => TValue) | null = null;
+
   @computed
   public get isRequired(): boolean {
     return this.requiredFunction(this.model);
@@ -264,18 +277,19 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
     if (options.value !== undefined) {
       if (!this.isReadonly) {
         throw new Error(
-          'Field option "value" is only for readonly fields. Use "format" for UI formatting or "transform" for submit formatting.'
+            'Field option "value" is only for readonly fields. Use "format" for UI formatting or "transform" for submit formatting.'
         );
       }
       if (options.default !== undefined) {
         throw new Error('Field cannot have both "value" and "default".');
       }
 
-      const produced =
-        typeof options.value === "function"
-          ? (options.value as (m: TModel) => TValue)(this.model)
-          : (options.value as TValue);
+      this.readonlyValueProducer =
+          typeof options.value === "function"
+              ? (options.value as (m: TModel) => TValue)
+              : () => options.value as TValue;
 
+      const produced = this.readonlyValueProducer(this.model);
       this.initValue(produced);
     } else if (options.default !== undefined) {
       if (this.isReadonly) throw new Error("default cannot be used with readonly fields");
@@ -302,6 +316,40 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
       default:
         return v as TValue;
     }
+  }
+
+  /**
+   * Internal setter used by readonly value producers.
+   *
+   * - Does NOT call onSet
+   * - Does NOT trigger model.validateSync()
+   * - Does NOT trigger async validation
+   */
+  @action
+  public __setDerivedValue(newValue: unknown): void {
+    if (!this.isReadonly || !this.readonlyValueProducer) return;
+
+    const coerced = this.__coerceValue(newValue);
+
+    runInAction(() => {
+      switch (this.type) {
+        case FieldType.set:
+          this.value = (coerced instanceof Set ? coerced : (new Set(coerced as any) as any)) as any;
+          break;
+        default:
+          this.value = this.format(coerced as any, this.model) as any;
+      }
+    });
+  }
+
+  /**
+   * Called by BaseModel.validateSync() passes to keep readonly/derived fields up to date.
+   */
+  @action
+  public __recomputeReadonlyValueIfNeeded(): void {
+    if (!this.isReadonly || !this.readonlyValueProducer) return;
+    const produced = this.readonlyValueProducer(this.model);
+    this.__setDerivedValue(produced);
   }
 
   @action
@@ -546,7 +594,7 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
    *   }
    */
   public static define<TValue, TThis extends BaseModel = BaseModel>(
-    options: FieldOptions<TThis, TValue> = {}
+      options: FieldOptions<TThis, TValue> = {}
   ): FieldPropertyDecorator<TThis, TValue> {
     return (_unused: undefined, context: FieldDecoratorContext<TThis, TValue>) => {
       if (context.kind !== "field" && context.kind !== "accessor") {
@@ -561,13 +609,13 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
       context.addInitializer(function (this: TThis) {
         if (this.__fields.includes(name)) {
           throw new Error(
-            `Field decorator attempted to define "${name}", but that field is already registered.`
+              `Field decorator attempted to define "${name}", but that field is already registered.`
           );
         }
 
         const preExisting = Object.prototype.hasOwnProperty.call(this, name)
-          ? (this as any)[name]
-          : undefined;
+            ? (this as any)[name]
+            : undefined;
 
         const field = new Field<TValue, TThis>(this as any, name, options);
 
@@ -593,37 +641,37 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
 
   // Convenience typed factories.
   public static string<TThis extends BaseModel = BaseModel>(
-    options: Omit<FieldOptions<TThis, string>, "type"> & { type?: never } = {}
+      options: Omit<FieldOptions<TThis, string>, "type"> & { type?: never } = {}
   ): FieldPropertyDecorator<TThis, string> {
     return Field.define<string, TThis>({ ...(options as any), type: FieldType.string });
   }
 
   public static bool<TThis extends BaseModel = BaseModel>(
-    options: Omit<FieldOptions<TThis, boolean>, "type"> & { type?: never } = {}
+      options: Omit<FieldOptions<TThis, boolean>, "type"> & { type?: never } = {}
   ): FieldPropertyDecorator<TThis, boolean> {
     return Field.define<boolean, TThis>({ ...(options as any), type: FieldType.bool });
   }
 
   public static int<TThis extends BaseModel = BaseModel>(
-    options: Omit<FieldOptions<TThis, number>, "type"> & { type?: never } = {}
+      options: Omit<FieldOptions<TThis, number>, "type"> & { type?: never } = {}
   ): FieldPropertyDecorator<TThis, number> {
     return Field.define<number, TThis>({ ...(options as any), type: FieldType.int });
   }
 
   public static float<TThis extends BaseModel = BaseModel>(
-    options: Omit<FieldOptions<TThis, number>, "type"> & { type?: never } = {}
+      options: Omit<FieldOptions<TThis, number>, "type"> & { type?: never } = {}
   ): FieldPropertyDecorator<TThis, number> {
     return Field.define<number, TThis>({ ...(options as any), type: FieldType.float });
   }
 
   public static date<TThis extends BaseModel = BaseModel>(
-    options: Omit<FieldOptions<TThis, Date | string>, "type"> & { type?: never } = {}
+      options: Omit<FieldOptions<TThis, Date | string>, "type"> & { type?: never } = {}
   ): FieldPropertyDecorator<TThis, Date | string> {
     return Field.define<Date | string, TThis>({ ...(options as any), type: FieldType.date });
   }
 
   public static json<TThis extends BaseModel = BaseModel, TValue = unknown>(
-    options: Omit<FieldOptions<TThis, TValue>, "type"> & { type?: never } = {}
+      options: Omit<FieldOptions<TThis, TValue>, "type"> & { type?: never } = {}
   ): FieldPropertyDecorator<TThis, TValue> {
     return Field.define<TValue, TThis>({ ...(options as any), type: FieldType.json });
   }
@@ -632,7 +680,7 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
    * Image bytes stored in DB (Uint8Array | null).
    */
   public static image<TThis extends BaseModel = BaseModel>(
-    options: Omit<FieldOptions<TThis, Uint8Array | null>, "type"> & { type?: never } = {}
+      options: Omit<FieldOptions<TThis, Uint8Array | null>, "type"> & { type?: never } = {}
   ): FieldPropertyDecorator<TThis, Uint8Array | null> {
     return Field.define<Uint8Array | null, TThis>({ ...(options as any), type: FieldType.image });
   }
@@ -641,7 +689,7 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
    * Array field (TItem[]).
    */
   public static collection<TThis extends BaseModel = BaseModel, TItem = unknown>(
-    options: Omit<FieldOptions<TThis, TItem[]>, "type"> & { type?: never } = {}
+      options: Omit<FieldOptions<TThis, TItem[]>, "type"> & { type?: never } = {}
   ): FieldPropertyDecorator<TThis, TItem[]> {
     return Field.define<TItem[], TThis>({ ...(options as any), type: FieldType.collection });
   }
@@ -651,7 +699,7 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
    * Note: keys are always strings at runtime.
    */
   public static map<TThis extends BaseModel = BaseModel, TValue = unknown>(
-    options: Omit<FieldOptions<TThis, Record<string, TValue>>, "type"> & { type?: never } = {}
+      options: Omit<FieldOptions<TThis, Record<string, TValue>>, "type"> & { type?: never } = {}
   ): FieldPropertyDecorator<TThis, Record<string, TValue>> {
     return Field.define<Record<string, TValue>, TThis>({
       ...(options as any),
@@ -663,7 +711,7 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
    * Set field (Set<TItem>).
    */
   public static set<TThis extends BaseModel = BaseModel, TItem = unknown>(
-    options: Omit<FieldOptions<TThis, Set<TItem>>, "type"> & { type?: never } = {}
+      options: Omit<FieldOptions<TThis, Set<TItem>>, "type"> & { type?: never } = {}
   ): FieldPropertyDecorator<TThis, Set<TItem>> {
     return Field.define<Set<TItem>, TThis>({ ...(options as any), type: FieldType.set });
   }

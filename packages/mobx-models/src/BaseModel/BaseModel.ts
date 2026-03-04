@@ -120,10 +120,7 @@ export default class BaseModel {
   }
 
   public toJS(excludePrimary: boolean = false, excludePseudo: boolean = true): JsonRecord {
-    const js = this.__extractValuesFromFields(
-        excludePrimary,
-        excludePseudo ? this.__submittable : this.__fields
-    );
+    const js = this.__extractValuesFromFields(excludePrimary, excludePseudo ? this.__submittable : this.__fields);
 
     for (const child of this.children) {
       const key = child.postAlias ?? this.__inferChildKey(child);
@@ -222,15 +219,34 @@ export default class BaseModel {
   public validateSync(): void {
     if (!this.initialized) return;
 
+    // Pass 1: recompute any readonly derived fields across the entire model tree.
+    this.__recomputeReadonlyFieldsDeep();
+
+    // Pass 2: run sync validation across the entire model tree.
+    this.__validateSyncOnlyDeep();
+  }
+
+  /**
+   * Internal: recompute readonly fields that have a value producer.
+   *
+   * Must not trigger onSet / async validation / validateSync loops.
+   */
+  @action
+  private __recomputeReadonlyFieldsDeep(): void {
+    for (const k of this.fields()) (this.field(k) as any).__recomputeReadonlyValue?.();
+    for (const child of this.children) (child as any).__recomputeReadonlyFieldsDeep();
+  }
+
+  /** Internal: sync validation only, with no recompute pass. */
+  @action
+  private __validateSyncOnlyDeep(): void {
     for (const k of this.fields()) this.field(k).validateSync();
-    for (const m of this.children) m.validateSync();
+    for (const child of this.children) (child as any).__validateSyncOnlyDeep();
   }
 
   @flow
   public *validate(): unknown {
-    const fieldResults: Array<string | null> = yield Promise.all(
-        this.fields().map((k) => this.field(k).validate())
-    );
+    const fieldResults: Array<string | null> = yield Promise.all(this.fields().map((k) => this.field(k).validate()));
 
     const childResults: boolean[] = yield Promise.all(this.children.map((m) => m.validate()));
 

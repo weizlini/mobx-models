@@ -4,10 +4,12 @@ import type { SyncValidator } from "../BaseModel/Field";
 
 export type ErrorCode = string;
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export const validators = {
-  // composition
+  // composition (factories)
   all<TValue, TModel extends BaseModel>(
-    ...validators: Array<SyncValidator<TValue, TModel>>
+      ...validators: Array<SyncValidator<TValue, TModel>>
   ): SyncValidator<TValue, TModel> {
     return (value, model) => {
       for (const fn of validators) {
@@ -19,7 +21,7 @@ export const validators = {
   },
 
   any<TValue, TModel extends BaseModel>(
-    ...validators: Array<SyncValidator<TValue, TModel>>
+      ...validators: Array<SyncValidator<TValue, TModel>>
   ): SyncValidator<TValue, TModel> {
     return (value, model) => {
       let last: ErrorCode | null = null;
@@ -33,22 +35,28 @@ export const validators = {
   },
 
   when<TValue, TModel extends BaseModel>(
-    predicate: (model: TModel) => boolean,
-    validator: SyncValidator<TValue, TModel>
+      predicate: (model: TModel) => boolean,
+      validator: SyncValidator<TValue, TModel>
   ): SyncValidator<TValue, TModel> {
     return (value, model) => (predicate(model) ? validator(value, model) : null);
   },
 
   // generic
-  notNull<TModel extends BaseModel>(
-    code: ErrorCode = "errors:notNull"
-  ): SyncValidator<unknown, TModel> {
+
+  /**
+   * Plain validator (no config): value must not be null.
+   * Note: this does not treat "" or undefined as null; use `required` for that.
+   */
+  notNull: ((value: unknown) => (value === null ? "errors:notNull" : null)) as SyncValidator<unknown, any>,
+
+  /** Factory for custom error codes. */
+  notNullCode<TModel extends BaseModel>(code: ErrorCode): SyncValidator<unknown, TModel> {
     return (value) => (value === null ? code : null);
   },
 
   oneOf<TModel extends BaseModel, TValue>(
-    allowed: ReadonlyArray<TValue>,
-    code: ErrorCode = "errors:oneOf"
+      allowed: ReadonlyArray<TValue>,
+      code: ErrorCode = "errors:oneOf"
   ): SyncValidator<TValue, TModel> {
     return (value) => (allowed.includes(value) ? null : code);
   },
@@ -58,8 +66,8 @@ export const validators = {
    * Useful for password confirmation, email confirmation, etc.
    */
   matchesField<TModel extends BaseModel>(
-    otherFieldName: string,
-    code: ErrorCode = "errors:mustMatch"
+      otherFieldName: string,
+      code: ErrorCode = "errors:mustMatch"
   ): SyncValidator<string, TModel> {
     return (value, model) => {
       const other = (model as any).field(otherFieldName) as Field<string, TModel> | undefined;
@@ -74,79 +82,94 @@ export const validators = {
   },
 
   // string
+
   minLen<TModel extends BaseModel>(
-    min: number,
-    code: ErrorCode = "errors:minLen"
+      min: number,
+      code: ErrorCode = "errors:minLen"
   ): SyncValidator<string, TModel> {
     return (value) => (value.length >= min ? null : code);
   },
 
   maxLen<TModel extends BaseModel>(
-    max: number,
-    code: ErrorCode = "errors:maxLen"
+      max: number,
+      code: ErrorCode = "errors:maxLen"
   ): SyncValidator<string, TModel> {
     return (value) => (value.length <= max ? null : code);
   },
 
   pattern<TModel extends BaseModel>(
-    re: RegExp,
-    code: ErrorCode = "errors:pattern"
+      re: RegExp,
+      code: ErrorCode = "errors:pattern"
   ): SyncValidator<string, TModel> {
     return (value) => (re.test(value) ? null : code);
   },
 
-  email<TModel extends BaseModel>(code: ErrorCode = "errors:email"): SyncValidator<string, TModel> {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return (value) => (re.test(value) ? null : code);
+  /** Plain validator (no config). */
+  email: ((value: string) => (EMAIL_RE.test(value) ? null : "errors:email")) as SyncValidator<
+      string,
+      any
+  >,
+
+  /** Factory for custom error codes. */
+  emailCode<TModel extends BaseModel>(code: ErrorCode): SyncValidator<string, TModel> {
+    return (value) => (EMAIL_RE.test(value) ? null : code);
   },
 
   // number
+
   min<TModel extends BaseModel>(
-    min: number,
-    code: ErrorCode = "errors:min"
+      min: number,
+      code: ErrorCode = "errors:min"
   ): SyncValidator<number, TModel> {
     return (value) => (value >= min ? null : code);
   },
 
   max<TModel extends BaseModel>(
-    max: number,
-    code: ErrorCode = "errors:max"
+      max: number,
+      code: ErrorCode = "errors:max"
   ): SyncValidator<number, TModel> {
     return (value) => (value <= max ? null : code);
   },
 
-  integer<TModel extends BaseModel>(
-    code: ErrorCode = "errors:integer"
-  ): SyncValidator<number, TModel> {
+  /** Plain validator (no config). */
+  integer: ((value: number) => (Number.isInteger(value) ? null : "errors:integer")) as SyncValidator<
+      number,
+      any
+  >,
+
+  /** Factory for custom error codes. */
+  integerCode<TModel extends BaseModel>(code: ErrorCode): SyncValidator<number, TModel> {
     return (value) => (Number.isInteger(value) ? null : code);
   },
 
   // array
+
   minItems<TModel extends BaseModel>(
-    min: number,
-    code: ErrorCode = "errors:minItems"
+      min: number,
+      code: ErrorCode = "errors:minItems"
   ): SyncValidator<unknown[], TModel> {
     return (value) => (value.length >= min ? null : code);
   },
 
   maxItems<TModel extends BaseModel>(
-    max: number,
-    code: ErrorCode = "errors:maxItems"
+      max: number,
+      code: ErrorCode = "errors:maxItems"
   ): SyncValidator<unknown[], TModel> {
     return (value) => (value.length <= max ? null : code);
   },
 
   // set
+
   setMin<TModel extends BaseModel>(
-    min: number,
-    code: ErrorCode = "errors:minItems"
+      min: number,
+      code: ErrorCode = "errors:minItems"
   ): SyncValidator<Set<unknown>, TModel> {
     return (value) => (value.size >= min ? null : code);
   },
 
   setMax<TModel extends BaseModel>(
-    max: number,
-    code: ErrorCode = "errors:maxItems"
+      max: number,
+      code: ErrorCode = "errors:maxItems"
   ): SyncValidator<Set<unknown>, TModel> {
     return (value) => (value.size <= max ? null : code);
   },
