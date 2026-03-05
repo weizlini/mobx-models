@@ -28,10 +28,15 @@ export class RootStore {
     return v === undefined ? null : (v as TStore);
   }
 
+  getPathFrom(paths: Array<string | number>): unknown {
+    return getPathFrom(this, paths);
+  }
+
   getPath(...paths: Array<string | number>): unknown {
     return getPathFrom(this, paths);
   }
 }
+
 function getPathFrom(start: RootStore, paths: Array<string | number>): unknown {
   let current: unknown = start;
 
