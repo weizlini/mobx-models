@@ -346,7 +346,7 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
    * Called by BaseModel.validateSync() passes to keep readonly/derived fields up to date.
    */
   @action
-  public __recomputeReadonlyValueIfNeeded(): void {
+  public __recomputeReadonlyValue(): void {
     if (!this.isReadonly || !this.readonlyValueProducer) return;
     const produced = this.readonlyValueProducer(this.model);
     this.__setDerivedValue(produced);
