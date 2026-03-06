@@ -39,16 +39,7 @@ class UserState extends BaseState {
     }
 
     const model = new UserModel();
-    model.init({
-      id: 0,
-      email: "",
-      password: "",
-      password2: "",
-      firstName: "",
-      lastName: "",
-      birthday: "",
-      age: 0,
-    });
+    model.init();
 
     this.model = model;
     this.editMode = true;
