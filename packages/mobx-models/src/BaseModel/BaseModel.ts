@@ -76,8 +76,8 @@ export default class BaseModel {
   @computed
   public get isNew(): boolean {
     return (
-        this.initialData === null ||
-        (typeof this.initialData === "object" && Object.keys(this.initialData).length === 0)
+      this.initialData === null ||
+      (typeof this.initialData === "object" && Object.keys(this.initialData).length === 0)
     );
   }
 
@@ -120,7 +120,10 @@ export default class BaseModel {
   }
 
   public toJS(excludePrimary: boolean = false, excludePseudo: boolean = true): JsonRecord {
-    const js = this.__extractValuesFromFields(excludePrimary, excludePseudo ? this.__submittable : this.__fields);
+    const js = this.__extractValuesFromFields(
+      excludePrimary,
+      excludePseudo ? this.__submittable : this.__fields
+    );
 
     for (const child of this.children) {
       const key = child.postAlias ?? this.__inferChildKey(child);
@@ -246,7 +249,9 @@ export default class BaseModel {
 
   @flow
   public *validate(): unknown {
-    const fieldResults: Array<string | null> = yield Promise.all(this.fields().map((k) => this.field(k).validate()));
+    const fieldResults: Array<string | null> = yield Promise.all(
+      this.fields().map((k) => this.field(k).validate())
+    );
 
     const childResults: boolean[] = yield Promise.all(this.children.map((m) => m.validate()));
 
