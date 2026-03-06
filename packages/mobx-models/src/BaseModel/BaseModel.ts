@@ -145,7 +145,7 @@ export default class BaseModel {
   }
 
   /**
-   * Convert model to plain JS object
+   * Convert model to a plain JS object
    */
   public toJS<T extends Record<string, unknown> = Record<string, unknown>>(
     excludePrimary: boolean = false,
