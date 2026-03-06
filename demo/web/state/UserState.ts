@@ -1,7 +1,7 @@
 import {action, flow, observable} from "mobx";
 import {BaseState, RootStore} from "mobx-models";
 
-import {createUser, getUserById, listUsers, updateUser, type UserRow,} from "../lib/userRepo";
+import {createUser, getUserById, listUsers, updateUser, UserInput, type UserRow,} from "../lib/userRepo";
 import UserModel from "./models/UserModel";
 
 class UserState extends BaseState {
@@ -19,7 +19,7 @@ class UserState extends BaseState {
     this.busy = true;
 
     try {
-      this.list = yield Promise.resolve(listUsers({limit: 200, offset: 0}));
+      this.list = yield listUsers({limit: 200, offset: 0});
     } finally {
       this.busy = false;
     }
@@ -73,12 +73,13 @@ class UserState extends BaseState {
     this.editMode = true;
   }
 
+
   @flow
-  *saveUser(): unknown{
-    if (!this.editMode) return;
+  *saveUser(): unknown {
+    if (!this.editMode || this.model === null) return;
 
     this.busy = true;
-    if(this.model === null) return;
+
     try {
       const isValid = yield this.model.validate();
 
@@ -86,30 +87,17 @@ class UserState extends BaseState {
         return false;
       }
 
-      const payload = {
-        email: String(this.model.email ?? "").trim().toLowerCase(),
-        password: String(this.model.password ?? ""),
-        firstName: String(this.model.firstName ?? ""),
-        lastName: String(this.model.lastName ?? ""),
-        age: Number(this.model.age ?? 0),
-        birthday: String(this.model.birthday ?? ""),
-      };
-
       const id = Number(this.model.id ?? 0);
 
       if (id === 0) {
-        yield Promise.resolve(createUser(payload));
+        const payload = this.model.toJS(true);
+        yield createUser(payload as UserInput);
       } else {
-        yield Promise.resolve(
-            updateUser({
-              id,
-              ...payload,
-            })
-        );
+        const payload = this.model.toJS();
+        updateUser(payload as UserRow);
       }
 
-      const rows = yield Promise.resolve(listUsers({ limit: 200, offset: 0 }));
-      this.list = rows as UserRow[];
+      this.list = yield listUsers({ limit: 200, offset: 0 });
       this.model = null;
       this.editMode = false;
 
