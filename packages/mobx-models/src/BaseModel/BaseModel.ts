@@ -2,7 +2,16 @@ import { observable, computed, action, toJS, flow } from "mobx";
 
 import type Field from "./Field";
 
-export type JsonRecord = Record<string, unknown>;
+/**
+ * BaseModel
+ *
+ * Generic form / view model base class.
+ * Handles:
+ * - field registration
+ * - validation orchestration
+ * - serialization (toJS / toJSON)
+ * - parent / child model relationships
+ */
 
 export default class BaseModel {
   public readonly isModel: true = true;
@@ -18,24 +27,22 @@ export default class BaseModel {
   @observable accessor saveError: unknown = null;
 
   /**
-   * Used when a child model's submit property is different than GET property.
+   * Optional alias used when serializing nested models.
    */
   @observable accessor postAlias: string | null = null;
 
   /**
-   * Registered field names (order matters for UI iteration).
+   * Field registry
    */
   @observable accessor __fields: string[] = [];
 
   /**
-   * Submittable field names (excludes pseudos).
+   * Submittable fields
    */
   @observable accessor __submittable: string[] = [];
 
   /**
-   * Internal registry to avoid indexing into `this[k]`.
-   *
-   * We keep this observable (shallow) so UI that iterates can react to field creation.
+   * Internal lookup map
    */
   @observable.shallow
   private accessor __fieldByName: Map<string, Field<any, any>> = new Map();
@@ -45,13 +52,16 @@ export default class BaseModel {
     if (parent) parent.addModel(this);
   }
 
+  /**
+   * Register child model
+   */
   @action
   public addModel(child: BaseModel): void {
     this.children.push(child);
   }
 
   /**
-   * Field registration entry point (called by Field constructor).
+   * Internal field registration
    */
   @action
   public __registerField(fieldName: string, field: Field<any, any>, submittable: boolean): void {
@@ -61,7 +71,7 @@ export default class BaseModel {
   }
 
   /**
-   * Typed field accessor.
+   * Lookup field
    */
   public field<T = unknown>(name: string): Field<T, any> {
     const f = this.__fieldByName.get(name);
@@ -73,14 +83,20 @@ export default class BaseModel {
     return this.__fields;
   }
 
+  /**
+   * Model is new if no initialData
+   */
   @computed
   public get isNew(): boolean {
     return (
-      this.initialData === null ||
-      (typeof this.initialData === "object" && Object.keys(this.initialData).length === 0)
+        this.initialData === null ||
+        (typeof this.initialData === "object" && Object.keys(this.initialData).length === 0)
     );
   }
 
+  /**
+   * Full validation state
+   */
   @computed
   public get isValid(): boolean {
     for (const k of this.fields()) {
@@ -92,6 +108,9 @@ export default class BaseModel {
     return true;
   }
 
+  /**
+   * Dirty state
+   */
   @computed
   public get isDirty(): boolean {
     for (const k of this.fields()) {
@@ -108,6 +127,9 @@ export default class BaseModel {
     return !this.isDirty;
   }
 
+  /**
+   * Partial validation
+   */
   public partialValidity(fields: string[]): boolean {
     for (const k of fields) {
       if (!this.field(k).isValid) return false;
@@ -115,14 +137,23 @@ export default class BaseModel {
     return true;
   }
 
-  public toJsAll(): JsonRecord {
-    return this.toJS(false, false);
+  /**
+   * Export all fields including non-submittable ones
+   */
+  public toJsAll<T extends Record<string, unknown> = Record<string, unknown>>(): T {
+    return this.toJS<T>(false, false);
   }
 
-  public toJS(excludePrimary: boolean = false, excludePseudo: boolean = true): JsonRecord {
+  /**
+   * Convert model to plain JS object
+   */
+  public toJS<T extends Record<string, unknown> = Record<string, unknown>>(
+      excludePrimary: boolean = false,
+      excludePseudo: boolean = true
+  ): T {
     const js = this.__extractValuesFromFields(
-      excludePrimary,
-      excludePseudo ? this.__submittable : this.__fields
+        excludePrimary,
+        excludePseudo ? this.__submittable : this.__fields
     );
 
     for (const child of this.children) {
@@ -130,10 +161,18 @@ export default class BaseModel {
       if (key) js[key] = child.toJS();
     }
 
-    return js;
+    /**
+     * Allow subclasses to post-process serialized data
+     */
+    return this.exportData(js as T);
   }
 
-  public toJSON(excludePrimary: boolean = false): JsonRecord {
+  /**
+   * JSON serialization (usually for server)
+   */
+  public toJSON<T extends Record<string, unknown> = Record<string, unknown>>(
+      excludePrimary: boolean = false
+  ): T {
     const js = this.__extractValuesFromFields(excludePrimary, this.__submittable);
 
     for (const child of this.children) {
@@ -141,15 +180,21 @@ export default class BaseModel {
       if (key) js[key] = child.toJSON();
     }
 
-    return js;
+    return this.exportData(js as T);
   }
 
+  /**
+   * Child key inference hook
+   */
   protected __inferChildKey(_child: BaseModel): string | null {
     return null;
   }
 
-  private __extractValuesFromFields(excludePrimary: boolean, fields: string[]): JsonRecord {
-    const js: JsonRecord = {};
+  /**
+   * Extract values from fields
+   */
+  private __extractValuesFromFields(excludePrimary: boolean, fields: string[]): Record<string, unknown> {
+    const js: Record<string, unknown> = {};
 
     for (const k of fields) {
       if (excludePrimary && k === this.primaryKey) continue;
@@ -171,6 +216,9 @@ export default class BaseModel {
     return js;
   }
 
+  /**
+   * Reset model to initial state
+   */
   @action
   public reset(): void {
     for (const k of this.fields()) this.field(k).reset();
@@ -178,6 +226,9 @@ export default class BaseModel {
     this.validated = false;
   }
 
+  /**
+   * Initialize model
+   */
   @action
   public init(obj: Record<string, unknown> | null = null): void {
     this.initialized = false;
@@ -194,6 +245,9 @@ export default class BaseModel {
     this.validated = false;
   }
 
+  /**
+   * Initialize field values
+   */
   @action
   public initValue(obj: Record<string, unknown>): void {
     for (const k of this.fields()) {
@@ -203,11 +257,17 @@ export default class BaseModel {
     }
   }
 
+  /**
+   * Set field value
+   */
   @action
   public setValue(key: string, value: unknown): void {
     this.field(key).setValue(value);
   }
 
+  /**
+   * Set multiple fields
+   */
   @action
   public setFields(model: Record<string, { value: unknown }>): void {
     for (const fieldName of this.fields()) {
@@ -218,39 +278,36 @@ export default class BaseModel {
     }
   }
 
+  /**
+   * Sync validation pass
+   */
   @action
   public validateSync(): void {
     if (!this.initialized) return;
 
-    // Pass 1: recompute any readonly derived fields across the entire model tree.
     this.__recomputeReadonlyFieldsDeep();
-
-    // Pass 2: run sync validation across the entire model tree.
     this.__validateSyncOnlyDeep();
   }
 
-  /**
-   * Internal: recompute readonly fields that have a value producer.
-   *
-   * Must not trigger onSet / async validation / validateSync loops.
-   */
   @action
   private __recomputeReadonlyFieldsDeep(): void {
     for (const k of this.fields()) (this.field(k) as any).__recomputeReadonlyValue?.();
     for (const child of this.children) (child as any).__recomputeReadonlyFieldsDeep();
   }
 
-  /** Internal: sync validation only, with no recompute pass. */
   @action
   private __validateSyncOnlyDeep(): void {
     for (const k of this.fields()) this.field(k).validateSync();
     for (const child of this.children) (child as any).__validateSyncOnlyDeep();
   }
 
+  /**
+   * Async validation
+   */
   @flow
   public *validate(): unknown {
     const fieldResults: Array<string | null> = yield Promise.all(
-      this.fields().map((k) => this.field(k).validate())
+        this.fields().map((k) => this.field(k).validate())
     );
 
     const childResults: boolean[] = yield Promise.all(this.children.map((m) => m.validate()));
@@ -262,10 +319,16 @@ export default class BaseModel {
     return !failure;
   }
 
-  public exportData<T extends unknown>(data: T): T {
+  /**
+   * Hook for subclasses to modify outgoing data
+   */
+  public exportData<T extends Record<string, unknown>>(data: T): T {
     return data;
   }
 
+  /**
+   * Hook for subclasses to modify incoming data
+   */
   public importData<T extends Record<string, unknown>>(data: T): T {
     return data;
   }
