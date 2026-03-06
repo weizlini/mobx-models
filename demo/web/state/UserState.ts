@@ -1,7 +1,14 @@
-import {action, flow, observable} from "mobx";
-import {BaseState, RootStore} from "mobx-models";
+import { action, flow, observable } from "mobx";
+import { BaseState, RootStore } from "mobx-models";
 
-import {createUser, getUserById, listUsers, updateUser, UserInput, type UserRow,} from "../lib/userRepo";
+import {
+  createUser,
+  getUserById,
+  listUsers,
+  updateUser,
+  UserInput,
+  type UserRow,
+} from "../lib/userRepo";
 import UserModel from "./models/UserModel";
 
 class UserState extends BaseState {
@@ -19,7 +26,7 @@ class UserState extends BaseState {
     this.busy = true;
 
     try {
-      this.list = yield listUsers({limit: 200, offset: 0});
+      this.list = yield listUsers({ limit: 200, offset: 0 });
     } finally {
       this.busy = false;
     }
@@ -49,7 +56,7 @@ class UserState extends BaseState {
 
   @action
   editUser(id: number): void {
-    if (this.editMode) return
+    if (this.editMode) return;
 
     const row = getUserById(id);
 
@@ -72,7 +79,6 @@ class UserState extends BaseState {
     this.model = model;
     this.editMode = true;
   }
-
 
   @flow
   *saveUser(): unknown {

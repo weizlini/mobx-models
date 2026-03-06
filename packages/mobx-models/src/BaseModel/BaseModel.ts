@@ -89,8 +89,8 @@ export default class BaseModel {
   @computed
   public get isNew(): boolean {
     return (
-        this.initialData === null ||
-        (typeof this.initialData === "object" && Object.keys(this.initialData).length === 0)
+      this.initialData === null ||
+      (typeof this.initialData === "object" && Object.keys(this.initialData).length === 0)
     );
   }
 
@@ -148,12 +148,12 @@ export default class BaseModel {
    * Convert model to plain JS object
    */
   public toJS<T extends Record<string, unknown> = Record<string, unknown>>(
-      excludePrimary: boolean = false,
-      excludePseudo: boolean = true
+    excludePrimary: boolean = false,
+    excludePseudo: boolean = true
   ): T {
     const js = this.__extractValuesFromFields(
-        excludePrimary,
-        excludePseudo ? this.__submittable : this.__fields
+      excludePrimary,
+      excludePseudo ? this.__submittable : this.__fields
     );
 
     for (const child of this.children) {
@@ -171,7 +171,7 @@ export default class BaseModel {
    * JSON serialization (usually for server)
    */
   public toJSON<T extends Record<string, unknown> = Record<string, unknown>>(
-      excludePrimary: boolean = false
+    excludePrimary: boolean = false
   ): T {
     const js = this.__extractValuesFromFields(excludePrimary, this.__submittable);
 
@@ -193,7 +193,10 @@ export default class BaseModel {
   /**
    * Extract values from fields
    */
-  private __extractValuesFromFields(excludePrimary: boolean, fields: string[]): Record<string, unknown> {
+  private __extractValuesFromFields(
+    excludePrimary: boolean,
+    fields: string[]
+  ): Record<string, unknown> {
     const js: Record<string, unknown> = {};
 
     for (const k of fields) {
@@ -307,7 +310,7 @@ export default class BaseModel {
   @flow
   public *validate(): unknown {
     const fieldResults: Array<string | null> = yield Promise.all(
-        this.fields().map((k) => this.field(k).validate())
+      this.fields().map((k) => this.field(k).validate())
     );
 
     const childResults: boolean[] = yield Promise.all(this.children.map((m) => m.validate()));
