@@ -1,4 +1,4 @@
-import { BaseModel, asyncValidators, field, validators } from "mobx-models";
+import { BaseModel, Field, asyncValidators, field, validators } from "mobx-models";
 
 import { emailExists } from "../../lib/userRepo";
 
@@ -36,7 +36,7 @@ export default class UserModel extends BaseModel {
     required: true,
     default: 0,
   })
-  public id!: number;
+  public id!: Field<number, UserModel>;
 
   @field.string({
     required: true,
@@ -44,44 +44,44 @@ export default class UserModel extends BaseModel {
     asyncValidation: asyncValidators.unique<string, UserModel>({
       fieldName: "email",
       normalize: (v) =>
-        String(v ?? "")
-          .trim()
-          .toLowerCase(),
+          String(v ?? "")
+              .trim()
+              .toLowerCase(),
       exists: async (email) => emailExists(String(email ?? "")),
       code: "errors:emailTaken",
     }),
   })
-  public email!: string;
+  public email!: Field<string, UserModel>;
 
   @field.string({ required: true })
-  public password!: string;
+  public password!: Field<string, UserModel>;
 
   @field.string({
     required: true,
     pseudo: true,
     validation: validators.matchesField<UserModel>("password"),
   })
-  public password2!: string;
+  public password2!: Field<string, UserModel>;
 
   @field.string({ required: true })
-  public firstName!: string;
+  public firstName!: Field<string, UserModel>;
 
   @field.string({ required: true })
-  public lastName!: string;
+  public lastName!: Field<string, UserModel>;
 
   @field.string({
     required: true,
     validation: validators.pattern(/^\d{4}-\d{2}-\d{2}$/, "errors:date"),
   })
-  public birthday!: string;
+  public birthday!: Field<string, UserModel>;
 
   @field.int({
     readonly: true,
     value: (m) => {
-      const next = calculateAgeFromBirthdayIso(String(m.birthday ?? ""));
+      const next = calculateAgeFromBirthdayIso(String(m.birthday.value ?? ""));
       return Number.isFinite(next) ? next : 0;
     },
     validation: validators.all(validators.integer, validators.min(0), validators.max(150)),
   })
-  public age!: number;
+  public age!: Field<number, UserModel>;
 }
