@@ -1,16 +1,10 @@
-import { Suspense } from "react";
-import UserModel from "../../state/models/UserModel";
-import UsersTableSection from "./UsersTableSection";
+import { listUsers } from "../../lib/userRepo";
+import UsersTableClient from "./UsersTableClient";
 
-export default function UsersPage() {
-  return (
-    <main>
-      <h1>Users</h1>
-      <div style={{ marginTop: 16 }}>
-        <Suspense fallback={<div>Loading users…</div>}>
-          <UsersTableSection />
-        </Suspense>
-      </div>
-    </main>
-  );
+export const dynamic = "force-dynamic";
+
+export default async function UsersPage() {
+    const initialRows = listUsers({ limit: 200, offset: 0 });
+
+    return <UsersTableClient initialRows={initialRows} />;
 }
