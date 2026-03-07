@@ -20,6 +20,11 @@ class UserState extends BaseState {
     super(root);
   }
 
+  @action
+  setUsers(users: UserRow[]): void {
+    this.list = users;
+  }
+
   @flow
   *loadUsers(): unknown {
     this.busy = true;
