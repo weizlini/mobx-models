@@ -711,15 +711,19 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
     return Field.define<Set<TItem>, TThis>({ ...(options as any), type: FieldType.set });
   }
 }
-
 /**
  * Lowercase decorator alias.
  *
  * Usage:
  *   class User extends BaseModel {
- *     @field.string({ required: true }) name!: string;
- *     @field.collection<string>() tags!: string[];
+ *     @field.string({ required: true }) name!: Field<string, User>;
+ *     @field.collection<User, string>() tags!: Field<string[], User>;
  *   }
+ *
+ * Access pattern:
+ *   user.name.value
+ *   user.name.error
+ *   user.name.setValue("Alice")
  *
  * This is just Field.define, with the same typed convenience factories attached.
  */
