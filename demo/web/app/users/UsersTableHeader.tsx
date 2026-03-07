@@ -14,7 +14,7 @@ type UsersTableHeaderProps = {
     onHeaderClick: (key: SortKey) => void;
 };
 
-function UsersTableHeaderInner({ sortKey, sortDir, onHeaderClick }: UsersTableHeaderProps) {
+const UsersTableHeader = observer(function UsersTableHeader({ sortKey, sortDir, onHeaderClick }: UsersTableHeaderProps) {
     function renderHeader(label: string, key: SortKey) {
         const isActive = key === sortKey;
         const arrow = isActive ? (sortDir === "asc" ? " ▲" : " ▼") : " ↕";
@@ -46,9 +46,7 @@ function UsersTableHeaderInner({ sortKey, sortDir, onHeaderClick }: UsersTableHe
         </tr>
         </thead>
     );
-}
-
-const UsersTableHeader = observer(UsersTableHeaderInner);
+});
 
 export default UsersTableHeader;
 

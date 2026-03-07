@@ -32,7 +32,7 @@ function sortRows(rows: UserRow[], key: SortKey, dir: SortDir): UserRow[] {
   });
 }
 
-function UsersTableClientInner({ initialRows }: UsersTableClientProps) {
+const UsersTableClient = observer(function UsersTableClient({ initialRows }: UsersTableClientProps) {
   const userState = useStorePath("user") as UserState;
 
   const [sortKey, setSortKey] = React.useState<SortKey>("id");
@@ -92,8 +92,5 @@ function UsersTableClientInner({ initialRows }: UsersTableClientProps) {
         </div>
       </div>
   );
-}
-
-const UsersTableClient = observer(UsersTableClientInner);
-
+});
 export default UsersTableClient;
