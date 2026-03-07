@@ -20,6 +20,15 @@ class UserState extends BaseState {
     super(root);
   }
 
+  @observable accessor initialized:boolean = false;
+
+  @action
+  initializeUsers(users: UserRow[]): void {
+    if (this.initialized) return;
+    this.setUsers(users);
+    this.initialized = true;
+  }
+
   @action
   setUsers(users: UserRow[]): void {
     this.list = users;
