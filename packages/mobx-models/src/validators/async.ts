@@ -12,7 +12,7 @@ export const asyncValidators = {
    *   is unchanged from `model.initialData[fieldName]`.
    */
   unique<TValue, TModel extends BaseModel>(opts: {
-    exists: (value: TValue, model: TModel) => boolean | Promise<boolean>;
+    exists: (value: TValue, model: TModel) => Promise<boolean>;
     fieldName?: string;
     normalize?: (value: TValue) => TValue;
     allowBlank?: boolean;

@@ -1,6 +1,6 @@
 import { BaseModel, Field, asyncValidators, field, validators } from "mobx-models";
 
-import { emailExists } from "../../lib/userRepo";
+import { apiEmailExists } from "../../lib/userApi";
 
 type IsoDateOnly = `${number}${number}${number}${number}-${number}${number}-${number}${number}`;
 
@@ -47,7 +47,7 @@ export default class UserModel extends BaseModel {
           String(v ?? "")
               .trim()
               .toLowerCase(),
-      exists: async (email) => emailExists(String(email ?? "")),
+      exists: async (email) => apiEmailExists(String(email ?? "")),
       code: "errors:emailTaken",
     }),
   })
