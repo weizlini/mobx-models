@@ -2,10 +2,6 @@ import { NextResponse } from "next/server";
 
 import { getUserById, updateUser, type UpdateUserInput } from "../../../../lib/userRepo";
 
-type RouteContext = {
-    params: Promise<{ id: string }> | { id: string };
-};
-
 function parseId(rawId: string): number {
     const id = Number(rawId);
 
@@ -16,21 +12,23 @@ function parseId(rawId: string): number {
     return id;
 }
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(
+    _request: Request,
+    context: RouteContext<"/api/users/[id]">
+) {
     const { id: rawId } = await context.params;
-
     const id = parseId(rawId);
-
     const row = getUserById(id);
 
     return NextResponse.json(row);
 }
 
-export async function PUT(request: Request, context: RouteContext) {
+export async function PUT(
+    request: Request,
+    context: RouteContext<"/api/users/[id]">
+) {
     const { id: rawId } = await context.params;
-
     const id = parseId(rawId);
-
     const body = (await request.json()) as UpdateUserInput;
 
     updateUser({
