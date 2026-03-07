@@ -36,7 +36,7 @@ export default class UserModel extends BaseModel {
     required: true,
     default: 0,
   })
-  public id!: Field<number, UserModel>;
+  public id: Field<number> = undefined as any;
 
   @field.string({
     required: true,
@@ -51,29 +51,29 @@ export default class UserModel extends BaseModel {
       code: "errors:emailTaken",
     }),
   })
-  public email!: Field<string, UserModel>;
+  public email: Field<string, UserModel> = undefined as any;
 
   @field.string({ required: true })
-  public password!: Field<string, UserModel>;
+  public password: Field<string> = undefined as any;
 
   @field.string({
     required: true,
     pseudo: true,
     validation: validators.matchesField<UserModel>("password"),
   })
-  public password2!: Field<string, UserModel>;
+  public password2: Field<string> = undefined as any;
 
   @field.string({ required: true })
-  public firstName!: Field<string, UserModel>;
+  public firstName: Field<string> = undefined as any;
 
   @field.string({ required: true })
-  public lastName!: Field<string, UserModel>;
+  public lastName: Field<string> = undefined as any;
 
   @field.string({
     required: true,
     validation: validators.pattern(/^\d{4}-\d{2}-\d{2}$/, "errors:date"),
   })
-  public birthday!: Field<string, UserModel>;
+  public birthday: Field<string> = undefined as any;
 
   @field.int({
     readonly: true,
@@ -83,5 +83,5 @@ export default class UserModel extends BaseModel {
     },
     validation: validators.all(validators.integer, validators.min(0), validators.max(150)),
   })
-  public age!: Field<number, UserModel>;
+  public age: Field<number> = undefined as any;
 }
