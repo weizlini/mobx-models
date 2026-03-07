@@ -2,13 +2,12 @@ import { action, flow, observable } from "mobx";
 import { BaseState, RootStore } from "mobx-models";
 
 import {
-  createUser,
-  getUserById,
-  listUsers,
-  updateUser,
-  UserInput,
-  type UserRow,
-} from "../lib/userRepo";
+  apiCreateUser,
+  apiGetUserById,
+  apiListUsers,
+  apiUpdateUser,
+} from "../lib/userApi";
+import type { UserInput, UserRow } from "../lib/userRepo";
 import UserModel from "./models/UserModel";
 
 class UserState extends BaseState {
@@ -26,7 +25,7 @@ class UserState extends BaseState {
     this.busy = true;
 
     try {
-      this.list = yield listUsers({ limit: 200, offset: 0 });
+      this.list = yield apiListUsers({ limit: 200, offset: 0 });
     } finally {
       this.busy = false;
     }
@@ -45,11 +44,11 @@ class UserState extends BaseState {
     this.editMode = true;
   }
 
-  @action
-  editUser(id: number): void {
+  @flow
+  *editUser(id: number): unknown {
     if (this.editMode) return;
 
-    const row = getUserById(id);
+    const row: UserRow | null = yield apiGetUserById(id);
 
     if (!row) {
       throw new Error(`UserState.editUser: user with id ${id} was not found.`);
@@ -78,23 +77,23 @@ class UserState extends BaseState {
     this.busy = true;
 
     try {
-      const isValid = yield this.model.validate();
+      const validationResult = yield this.model.validate();
 
-      if (!isValid) {
+      if (validationResult) {
         return false;
       }
 
-      const id = Number(this.model.id ?? 0);
+      const id = Number(this.model.id.value ?? 0);
 
       if (id === 0) {
         const payload = this.model.toJS(true);
-        yield createUser(payload as UserInput);
+        yield apiCreateUser(payload as UserInput);
       } else {
         const payload = this.model.toJS();
-        updateUser(payload as UserRow);
+        yield apiUpdateUser(payload as UserRow);
       }
 
-      this.list = yield listUsers({ limit: 200, offset: 0 });
+      this.list = yield apiListUsers({ limit: 200, offset: 0 });
       this.model = null;
       this.editMode = false;
 
