@@ -8,6 +8,18 @@ function isIsoDateOnly(v: string): v is IsoDateOnly {
   return /^\d{4}-\d{2}-\d{2}$/.test(v);
 }
 
+const emailUniqueValidation = asyncValidators.unique({
+  fieldName: "email",
+  normalize: (v: string) =>
+      String(v ?? "")
+          .trim()
+          .toLowerCase(),
+  exists: async (email: string) => apiEmailExists(String(email ?? "")),
+  code: "errors:emailTaken",
+});
+
+const passwordMatchesValidation = validators.matchesField("password");
+
 export function calculateAgeFromBirthdayIso(birthdayIso: string, today: Date = new Date()): number {
   if (!isIsoDateOnly(birthdayIso)) return NaN;
 
@@ -41,15 +53,7 @@ export default class UserModel extends BaseModel {
   @field.string({
     required: true,
     validation: validators.email,
-    asyncValidation: asyncValidators.unique<string, UserModel>({
-      fieldName: "email",
-      normalize: (v) =>
-          String(v ?? "")
-              .trim()
-              .toLowerCase(),
-      exists: async (email) => apiEmailExists(String(email ?? "")),
-      code: "errors:emailTaken",
-    }),
+    asyncValidation: emailUniqueValidation,
   })
   public email: Field<string> = undefined as any;
 
@@ -59,7 +63,7 @@ export default class UserModel extends BaseModel {
   @field.string({
     required: true,
     pseudo: true,
-    validation: validators.matchesField<UserModel>("password"),
+    validation: passwordMatchesValidation,
   })
   public password2: Field<string> = undefined as any;
 
