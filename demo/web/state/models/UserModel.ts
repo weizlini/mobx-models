@@ -51,7 +51,7 @@ export default class UserModel extends BaseModel {
       code: "errors:emailTaken",
     }),
   })
-  public email: Field<string, UserModel> = undefined as any;
+  public email: Field<string> = undefined as any;
 
   @field.string({ required: true })
   public password: Field<string> = undefined as any;
