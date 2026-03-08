@@ -48,7 +48,7 @@ class UserState extends BaseState {
 
   @action
   newUser(): void {
-    if (this.editMode || this.loadingModel) return;
+    if (this.editMode || this.loadingModel || this.busy) return;
 
     const model = new UserModel();
     model.init();
@@ -59,7 +59,7 @@ class UserState extends BaseState {
 
   @flow
   *editUser(id: number): unknown {
-    if (this.editMode || this.loadingModel) return;
+    if (this.editMode || this.loadingModel || this.busy) return;
 
     this.loadingModel = true;
 
