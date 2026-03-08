@@ -15,12 +15,13 @@ class UserState extends BaseState {
   @observable accessor model: UserModel | null = null;
   @observable accessor editMode = false;
   @observable accessor busy = false;
+  @observable accessor loadingList = false;
+  @observable accessor loadingModel = false;
+  @observable accessor initialized = false;
 
   constructor(root: RootStore) {
     super(root);
   }
-
-  @observable accessor initialized:boolean = false;
 
   @action
   initializeUsers(users: UserRow[]): void {
@@ -36,20 +37,18 @@ class UserState extends BaseState {
 
   @flow
   *loadUsers(): unknown {
-    this.busy = true;
+    this.loadingList = true;
 
     try {
       this.list = yield apiListUsers({ limit: 200, offset: 0 });
     } finally {
-      this.busy = false;
+      this.loadingList = false;
     }
   }
 
   @action
   newUser(): void {
-    if (this.editMode) {
-      throw new Error("UserState.newUser: cannot create a new user while already editing.");
-    }
+    if (this.editMode || this.loadingModel) return;
 
     const model = new UserModel();
     model.init();
@@ -60,54 +59,61 @@ class UserState extends BaseState {
 
   @flow
   *editUser(id: number): unknown {
-    if (this.editMode) return;
+    if (this.editMode || this.loadingModel) return;
 
-    const row: UserRow | null = yield apiGetUserById(id);
+    this.loadingModel = true;
 
-    if (!row) {
-      throw new Error(`UserState.editUser: user with id ${id} was not found.`);
+    try {
+      const row: UserRow | null = yield apiGetUserById(id);
+
+      if (!row) {
+        throw new Error(`UserState.editUser: user with id ${id} was not found.`);
+      }
+
+      const model = new UserModel();
+      model.init({
+        id: row.id,
+        email: row.email,
+        password: row.password,
+        password2: row.password,
+        firstName: row.firstName,
+        lastName: row.lastName,
+        birthday: row.birthday,
+        age: row.age,
+      });
+
+      this.model = model;
+      this.editMode = true;
+    } finally {
+      this.loadingModel = false;
     }
-
-    const model = new UserModel();
-    model.init({
-      id: row.id,
-      email: row.email,
-      password: row.password,
-      password2: row.password,
-      firstName: row.firstName,
-      lastName: row.lastName,
-      birthday: row.birthday,
-      age: row.age,
-    });
-
-    this.model = model;
-    this.editMode = true;
   }
 
   @flow
   *saveUser(): unknown {
-    if (!this.editMode || this.model === null) return;
+    if (!this.editMode || this.model === null || this.busy) return false;
+
+    const isValid: boolean = yield this.model.validate();
+
+    if (!isValid) {
+      return false;
+    }
 
     this.busy = true;
 
     try {
-      const validationResult = yield this.model.validate();
-
-      if (validationResult) {
-        return false;
-      }
-
       const id = Number(this.model.id.value ?? 0);
 
       if (id === 0) {
-        const payload = this.model.toJS(true);
-        yield apiCreateUser(payload as UserInput);
+        const payload = this.model.toJS(true) as UserInput;
+        yield apiCreateUser(payload);
       } else {
-        const payload = this.model.toJS();
-        yield apiUpdateUser(payload as UserRow);
+        const payload = this.model.toJS() as UserRow;
+        yield apiUpdateUser(payload);
       }
 
-      this.list = yield apiListUsers({ limit: 200, offset: 0 });
+      yield this.loadUsers();
+
       this.model = null;
       this.editMode = false;
 
@@ -119,6 +125,7 @@ class UserState extends BaseState {
 
   @action
   cancel(): void {
+    if (this.busy) return;
     this.model = null;
     this.editMode = false;
   }
