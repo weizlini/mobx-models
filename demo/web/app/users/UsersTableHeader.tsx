@@ -14,7 +14,11 @@ type UsersTableHeaderProps = {
     onHeaderClick: (key: SortKey) => void;
 };
 
-const UsersTableHeader = observer(function UsersTableHeader({ sortKey, sortDir, onHeaderClick }: UsersTableHeaderProps) {
+const UsersTableHeader = observer(function UsersTableHeader({
+                                                                sortKey,
+                                                                sortDir,
+                                                                onHeaderClick,
+                                                            }: UsersTableHeaderProps) {
     function renderHeader(label: string, key: SortKey) {
         const isActive = key === sortKey;
         const arrow = isActive ? (sortDir === "asc" ? " ▲" : " ▼") : " ↕";
@@ -43,6 +47,7 @@ const UsersTableHeader = observer(function UsersTableHeader({ sortKey, sortDir, 
             {renderHeader("Last name", "lastName")}
             {renderHeader("Age", "age")}
             {renderHeader("Birthday", "birthday")}
+            <th style={thStyleStatic}>Actions</th>
         </tr>
         </thead>
     );
@@ -56,6 +61,18 @@ const thStyle: React.CSSProperties = {
     padding: "10px 8px",
     whiteSpace: "nowrap",
     cursor: "row-resize",
+    userSelect: "none",
+    position: "sticky",
+    top: 0,
+    zIndex: 2,
+    background: "#fff",
+};
+
+const thStyleStatic: React.CSSProperties = {
+    textAlign: "left",
+    borderBottom: "1px solid #ddd",
+    padding: "10px 8px",
+    whiteSpace: "nowrap",
     userSelect: "none",
     position: "sticky",
     top: 0,
