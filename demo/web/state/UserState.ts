@@ -125,7 +125,7 @@ class UserState extends BaseState {
 
   @action
   cancel(): void {
-    if (this.busy) return;
+    if (this.busy || this.loadingModel) return;
     this.model = null;
     this.editMode = false;
   }
