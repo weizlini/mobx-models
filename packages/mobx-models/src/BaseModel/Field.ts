@@ -114,7 +114,7 @@ export interface FieldDecoratorContext<TThis, _TValue> {
 export type FieldPropertyDecorator<TThis extends BaseModel, TValue> = (
     _value: undefined,
     context: FieldDecoratorContext<TThis, Field<TValue, TThis>>
-) => void;
+) => void | ((this: TThis, initialValue: unknown) => Field<TValue, TThis>);
 
 function emptyForType(type: FieldTypeValue | FieldTypeKey | string): unknown {
   switch (type) {
@@ -602,6 +602,24 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
       const name = context.name;
       if (typeof name !== "string") {
         throw new Error("@Field does not support symbol property names.");
+      }
+
+      if (context.kind === "field") {
+        return function (this: TThis, initialValue: unknown): Field<TValue, TThis> {
+          if (this.__fields.includes(name)) {
+            throw new Error(
+                `Field decorator attempted to define "${name}", but that field is already registered.`
+            );
+          }
+
+          const field = new Field<TValue, TThis>(this as any, name, options);
+
+          if (initialValue !== undefined) {
+            field.initValue(initialValue);
+          }
+
+          return field;
+        };
       }
 
       context.addInitializer(function (this: TThis) {
