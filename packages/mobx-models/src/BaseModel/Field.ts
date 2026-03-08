@@ -142,10 +142,8 @@ function coerceImageBytes(v: unknown): Uint8Array | null {
     return new Uint8Array(v.buffer, v.byteOffset, v.byteLength);
   }
 
-  // Optional Node.js Buffer support without importing Node types.
   const maybeBuffer = (globalThis as any)?.Buffer;
   if (maybeBuffer && typeof maybeBuffer.isBuffer === "function" && maybeBuffer.isBuffer(v)) {
-    // Buffer is a Uint8Array subclass, but keep it normalized.
     return new Uint8Array(v as Uint8Array);
   }
 
@@ -159,33 +157,33 @@ export default class Field<TValue = unknown, TModel extends BaseModel = BaseMode
   public model: TModel;
   public fieldName: string;
 
-  @observable public isPrimary: boolean = false;
-  @observable public isPseudo: boolean = false;
-  @observable public isReadonly: boolean = false;
+  @observable accessor isPrimary: boolean = false;
+  @observable accessor isPseudo: boolean = false;
+  @observable accessor isReadonly: boolean = false;
 
-  @observable public hasAsyncValidator: boolean = false;
-  @observable public doAsyncValidationOnChange: boolean = false;
+  @observable accessor hasAsyncValidator: boolean = false;
+  @observable accessor doAsyncValidationOnChange: boolean = false;
 
-  @observable public min: number | null = null;
-  @observable public max: number | null = null;
+  @observable accessor min: number | null = null;
+  @observable accessor max: number | null = null;
 
-  @observable public initialValue: TValue = undefined as any;
+  @observable accessor initialValue: TValue = undefined as any;
 
-  @observable public requiredMessage: string = "errors:requiredField";
+  @observable accessor requiredMessage: string = "errors:requiredField";
 
-  @observable public testId: string = "";
-  @observable public help: string = "";
-  @observable public ui: string = "";
-  @observable public label: string = "";
+  @observable accessor testId: string = "";
+  @observable accessor help: string = "";
+  @observable accessor ui: string = "";
+  @observable accessor label: string = "";
 
-  @observable public postAlias: string = "";
+  @observable accessor postAlias: string = "";
 
-  @observable public type: FieldTypeValue | FieldTypeKey | string = FieldType.string;
+  @observable accessor type: FieldTypeValue | FieldTypeKey | string = FieldType.string;
 
-  @observable public value: TValue = undefined as any;
+  @observable accessor value: TValue = undefined as any;
 
-  @observable public error: string | null = null;
-  @observable public isAsyncValidating: boolean = false;
+  @observable accessor error: string | null = null;
+  @observable accessor isAsyncValidating: boolean = false;
 
   public requiredFunction: (model: TModel) => boolean = () => false;
 
